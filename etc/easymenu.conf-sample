@@ -32,7 +32,7 @@ CHOICES:1 2 3
 m.CMD.EXEC:echo Enter your e-mail below. Send the e-mail by typing one
 m.CMD2.EXEC:echo single dot and then return on an empty line.
 m.CMD3.EXEC:echo Note: Please use English or Swedish!
-m.CMD4.EXEC:mail ola@mreriksson.net
+m.CMD4.EXEC:echo Sorry, this is just a dummy, no email sent!
 m.CMD5.EXEC:echo Thanks!
 
 ### View man-pages ###
