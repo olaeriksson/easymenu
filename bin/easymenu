@@ -544,6 +544,7 @@ cfgfile_init()
 			cleanandexit 1
 		fi
 	else
+		echo -n ""
 		### Some work might be needed here to get the -c option working ###
 	fi
 
