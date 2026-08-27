@@ -1,0 +1,98 @@
+# Misc Settings
+ALLOWKILL:YES
+CLEARSCREEN:YES
+BGPATH:etc/menus-sample/
+OPTIONS:NOEXECBREAK CLEARONEXIT
+PS1:Choice: 
+
+# Show text on startup, and exit
+PREMAINMSG:pre-demo
+POSTMAINMSG:post-demo
+
+# Global choices that are availible everywhere.
+@.CHOICES:q b t
+@.q.CMD.INT:QUIT
+@.b.CMD.INT:BACK
+@.t.CMD.INT:GOTO
+@.t.CMD.ARG:
+@.PREBG:date
+
+### The main menu ###
+.MENUBG:main
+.CHOICES:1 2 m
+.OPTIONS:
+1.CMD.EXEC:more README
+1.OPTIONS:NOKEY
+
+### The demonstration menu ###
+$ORIGIN 2
+MENUBG:demo
+PS1:Demo: 
+CHOICES:1 2 3
+m.CMD.EXEC:echo Enter your e-mail below. Send the e-mail by typing one
+m.CMD2.EXEC:echo single dot and then return on an empty line.
+m.CMD3.EXEC:echo Note: Please use English or Swedish!
+m.CMD4.EXEC:mail ola@mreriksson.net
+m.CMD5.EXEC:echo Thanks!
+
+### View man-pages ###
+$ORIGIN 2.1
+MENUBG:demo.1
+PS1:Manpage: 
+CHOICES:1 2 3 4
+1.CMD.EXEC:man ls
+2.CMD.EXEC:man sh
+3.CMD.EXEC:man tar
+4.CMD.EXEC:man cat
+
+### Execute applications ###
+$ORIGIN 2.2
+MENUBG:demo.2
+CHOICES:1 2
+1.CMD.EXEC:sh
+2.CMD.EXEC:vi
+
+### Demonstration of Easymenus internal functions ###
+$ORIGIN 2.3
+MENUBG:demo.3
+CHOICES:1 2 3 4 5 6 7
+1.CMD.EXEC:sleep 10
+1.OPTIONS:TWIDDLE NOKEY
+2.CMD.EXEC:echo Here we execute several commands...
+2.CMD1.EXEC:echo Printing
+2.CMD2.INT:WAIT
+2.CMD2.ARG:1
+2.CMD3.EXEC:echo Sleeping
+2.CMD4.INT:WAIT
+2.CMD4.ARG:1
+2.CMD5.EXEC:echo Done
+2.CMD6.EXEC:echo And we are done!!
+2.CMD7.INT:NULL
+2.CMD8.INT:NULL
+2.CMD9.INT:WAIT
+2.CMD9.ARG:4
+2.OPTIONS:NOKEY
+3.CMD.EXEC:echo Easymenu environment variables:
+3.CMD2.EXEC:echo EM_CHOICE= $EM_CHOICE
+3.CMD3.EXEC:echo EM_FULLCHOICE= $EM_FULLCHOICE
+3.CMD4.EXEC:echo EM_MENU= $EM_MENU
+3.CMD5.EXEC:echo EM_BGPATH= $EM_BGPATH
+3.CMD6.EXEC:echo EM_PS1= $EM_PS1
+4.CMD.INT:CONFIGDEBUG
+5.CMD.INT:CFGSET
+5.CMD.ARG:@.PREBG:echo Global PREBG option has been changed!!
+5.CMD2.EXEC:echo Please note that the current time and date will
+5.CMD3.EXEC:echo will not be shown at the top of the screen after the
+5.CMD4.EXEC:echo next update. This is because the current configuration
+5.CMD5.EXEC:echo has been changed using the internal command CFGSET.
+5.CMD6.EXEC:echo 
+5.CMD7.INT:WAITRETURN
+5.CMD7.ARG:Press return to update the screen and see the changes...
+6.CMD.INT:CFGREMOVE
+6.CMD.ARG:@.PREBG
+6.CMD2.EXEC:echo The option that shows the current time and date at the top
+6.CMD3.EXEC:echo of the screen will now be removed.
+6.CMD4.EXEC:echo
+6.CMD5.INT:WAITRETURN
+6.CMD5.ARG:Press return to update the screen and see the changes...
+7.CMD.INT:CFGRELOAD

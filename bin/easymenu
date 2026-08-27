@@ -1,0 +1,2256 @@
+#!/bin/sh
+#############################################################
+#                                                           #
+#      Name: easymenu                                       #
+#   Version: 0.8                                            #
+#    Author: Ola Eriksson <ola@mreriksson.net>              #
+#   Changed: 2002-05-25                                     #
+#                                                           #
+#     Usage: easymenu [-oap] [configfile]                   #
+#            easymenu -v                                    #
+#                                                           #
+#############################################################
+#
+#
+#  HISTORY
+#  =======
+#
+#  Current
+#  -------
+#  Optimized the main loop.
+#  Fixed some errors in the global command handling.
+#  Added the -p commandline flag.
+#  Added the configfile pre-processor and support for $ORIGIN.
+#  Now allows for static ENV variables to be set in the configfile via
+#  the $VAR command.
+#  Added the removewordinstring() function.
+#  New function: setemenv()
+#  Added new internal command: READ
+#  Added new internal command: ENVSET
+#  Added new internal command: ENVREMOVE
+#  The configuration file commands are no longer case-sensitive.
+#  cfgfile_set() will now remove any existing copies of the new variable
+#  before adding it to the current configuration.
+#  Added the removeemenv() function.
+#
+#  0.7.2
+#  -----
+#  Fixed bug where easymenu looked for <menu>.ARG instead of .CMD.ARG.
+#  Moved code that reads global configuration to a function so that it can
+#  be executed from anywhere.
+#  Optimized the main loop quite alot.
+#  Added the minimode.
+#  Added configuration options MENUBGPREFIX and MENUBGSUFFIX.
+#  Added internal command: CFGSET
+#  Added internal command: WAIT
+#  Added internal command: WAITRETURN
+#  Added internal command: CFGREMOVE
+#  Added internal command: CFGRELOAD
+#  Added internal command: CFGLOADNEWFILE
+#  Added internal command: SETMENUBGPREFIX
+#  Added internal command: SETMENUBGSUFFIX
+#
+#  0.7.1
+#  -----
+#  Added the -v argument for version information.
+#  Will now show the path to where a configfile was expected when it
+#  can't be found.
+#  Now makes sure that the global pre- and postbg commands are availible.
+#  Doesn't require the MENUBG option anymore, but atleast one of the MENUBG,
+#  PREBG or POSTBG options must be present for each menu.
+#  New internal command: NULL (Does nothing)
+#  If no configfile is given on the commandline, easymenu will first look
+#  for ~/.easymenurc, and if it doesn't exist, go for the global cfgfile.
+#  Lines in configfile starting with #. will NOT be threated as comments
+#  any more, this to allow # to be a choice in the root menu.
+#  It is now possible to specify an alternative read command.
+#  The twiddle function now uses printf instead of echo -n, which should
+#  get it running under Sun Solaris.
+#  It is now possible to supply configuration arguments via the commandline.
+#  Added config options to show a textfile before and after the main
+#  loop is executed.
+#  Will now make sure that there are no double entries in the configfile.
+#  Now has the option to continue after a failed exec (NOEXECBREAK).
+#  Added the CLEARONEXIT option.
+#  Binaries are now executed in a new shell.
+#  Added the CURRENTSHELL option to CMD.OPTIONS.
+#  Added a set of ENV variables availible when executing binaries.
+#  Improved scripts for demonstration usage.
+#  Added variables EM_GLOBALCHOICES and EM_MENUCHOICES to ENV in execwithshell()
+#  New internal command for debuging: CONFIGDEBUG
+#  Added the -a commandline argument.
+#  
+#  0.7p1
+#  -----
+#  Converted all $( () ) inline executions back to `` which seems to
+#  be much more portable.
+#  Removed all 'readonly' commands to make it more portable.
+#  Replaced $(( )) math functions with 'expr' to be more portable.
+#  Fixed some test statements which failed on some systems when an empty
+#  variable was used.
+#  Removed all 'local' statements, since these doesn't work on all systems.
+#  Moved the 'not' statement (!) inside the argument to 'test' in some if
+#  blocks since some systems if command doesn't seem to support this.
+#  Fixed a few 'grep' statements which caused problems on some systems.
+#  Implemented an 'oldstyle' mode which should work on more systems, but is
+#  alot slower. This mode will replace all ${%%} substitutions with a 'cut'
+#  based solution.
+#  Added a better handler for commandline arguments.
+#  Added the '-o' commandline argument to switch to oldstyle mode.
+#
+#  0.7
+#  ---
+#  Added some errorchecking, will now complain if the configfile contains
+#  a semi-colon (;).
+#  Cleaned up the README file, and filled some missing parts.
+#
+#  0.6
+#  ---
+#  Made sure that all errormessages are printed using the function 'domsg()'.
+#  Added menu configuration command: C2FILE
+#
+#  0.5
+#  ---
+#  CMD2, CMD3 etc can now execute both internal and external commands and
+#  can be used in local aswell as global choice specifications.
+#  Global choices are now prefixed with "@" instead of "GLOBAL".
+#  Fixed problem which caused the "Press return to continue" functions to
+#  just continue without waiting for a return char when using other shell
+#  than bash.
+#  Replaced all execution result replacements using `` with $( () ) for
+#  compatibility reasons.
+#  Added local function: availibleforexec()
+#  Now checks to make sure that all commands that are going to be executed
+#  are availible. This to avoid as many 'command not found' situations as
+#  possible. Checks .EXEC aswell as PRE- and POSTBG exec.
+#  Added menu option: ACCEPTALL
+#
+#  0.4
+#  ---
+#  Cleaned up the filestructure.
+#  Inserted the testconfig directory as sample config in etc/.
+#  Replaced cfg command 'GLOBALCHOICES' with 'GLOBAL.CHOICES', looks better.
+#  Changed the structure of the config arguments that executes internal and
+#  external commands. All INT and EXEC commands are now prepended by the
+#  CMD command, this to give a better structure when executing several
+#  commands for one choice.
+#  Added internal function 'instring()'.
+#  Added internal function 'twiddle()'.
+#  Added CMD.EXEC options: NOKEY TWIDDLE
+#  It's now possible to execute several EXEC commands on one choice using
+#  CMD2, CMD3 etc.
+#  Implementet menuspecific PS1 configuration option.
+#
+#  0.3
+#  ---
+#  Added new internal command: REFRESH
+#  Moved the handeling of internal commands to a local function for
+#  better handling of internal commands from both internal and menuspecific
+#  choices.
+#  Default handling for keywords can now be set using global entries.
+#  Will now handle situations where nothing is configured for the
+#  requested choice.
+#  Function `unknowninternal()` will now output usefull information.
+#  Added global PRE- and POSTBG commands.
+#  Fixed problem where the menu wouldn't die even if it's terminal was
+#  killed.
+#  Fixed a bug which caused the internal command `BACK` to fail if the user
+#  where in any other menu than sub-level one.
+#  It's now possible to have comments in the configfile. All lines that
+#  start with a hash (#) char will be ignored.
+#  Added the BGPATH option to the configfile.
+#  New internal command: GOTO
+#  Added a 'ARG' option to the cfgfile for internal commands etc.
+#  Added configuration option 'PS1' to set the choice prompt string.
+#  Added function to handle missing menufiles.
+#
+#  0.2
+#  ---
+#  Only a return from the user will simply redraw the menu.
+#  Break and suspend signals can now be caught using the ALLOWKILL=NO
+#  command in the configfile. (This is the default)
+#  Implemented a handler for internal commands, and added the first
+#  command, BACK.
+#  Added menucommands: PREBG POSTBG
+#  Added internal command: QUIT
+#
+#  0.1
+#  ---
+#  First development version.
+#
+#
+#
+#  TODO
+#  ====
+#  - Should be possible to specify a file which .CHOICES should be read from.
+#  - Should have some kind of color support.
+#  - EXEC doesn't seem to be able to execute several semi-colon
+#    separated commands.
+#  - Optimize the cfghandler functions.
+#  - Should have a 'please wait' option that shows a message when generating
+#    the output for a menu. This to be used when dynamic menues are used,
+#    which might take some time to generate.
+#  - Should be possible to get the CMD.ARG value from a script/binary that
+#    is executed, and outputs something to stdout.
+#  - Solve problems with quotes in cfgfile, example: EXEC:echo That's it
+#  - Internal commands should not be case-sensitive.
+#  - Add a menu-option that creates the output for a menu, including both
+#    the image itselfe, and post- and prebg command executions before
+#    displaying it to the user.
+#  - Will complain if no MENUBG is given, even if PREBG or POSTBG exists.
+#  - Add an internal CONFIRMCONTINUE command.
+#  - Add templade for new minimode creators.
+#  - Extend the internal minimode creator with some more functions to make
+#    the menues look better.
+#  - Add info to README about --VARIABLE etc.
+#  - The READ command should accept arguments about what to accept from the
+#    user etc.
+#  - Should have an option that is executed if none of the local or global
+#    choices are matched.
+#  - Fix the broken READ command (Internal).
+#  - The NOEXECBREAK does not seem to work in all situations.
+#  - Make sure that the ENVREMOVE command works as expected.
+#  - Make sure that the preprocessor looks for double keys in the config.
+#  - Make sure that the preprocessor-debugger works.
+#  - Make sure that the -c option works.
+#  - $VAR records should NOT end up in CFGVARIALBLE_* records.
+#  - Should not require .CHOICES for sub-menues, only .MENUBG.
+#  - Make sure that the double-key check does not apply to commented
+#    lines.
+#
+#
+
+### BEGIN Static Configuration ###
+	__version="0.8"
+	__global_choice_prefix="@"
+	__keyword_variablelist="--VARIABLELIST"
+	__keyword_variableprefix="--VARIABLE."
+	__default_user_cfg_file="~/.easymenurc"
+	__default_cfg_file="/usr/local/etc/easymenu.conf"
+	__default_read_cmd="read"
+	__default_exec_shell="/bin/sh -c"
+	__default_temproot="/tmp/"
+	__default_waitreturn_prompt="Press return to continue..."
+	## Lines below are commented out because systems like Sun Solaris
+	## doesn't undestand the readonly command.
+	# readonly	__global_choice_prefix="@"
+	# readonly	__default_cfg_file="/usr/local/etc/easymenu.conf"
+### END Static Configuration ###
+
+### BEGIN Local functions ###
+
+#############################################################
+#                                                           #
+#      Name: cfgfile_init                                   #
+#   Version: 2.0                                            #
+#    Author: Ola Eriksson                                   #
+#   Changed: 2002-05-24                                     #
+#                                                           #
+#     Usage: cfgfile_init <configfile>                      #
+#                                                           #
+#############################################################
+#
+#  Note: From version 1.1, lines starting with a hash (#) char are
+#        threated as comments, and ignored.
+#
+cfgfile_init()
+{
+	# We need exacly one argument.
+	if [ $# -ne 1 ]; then
+		return 1
+	fi
+
+	# Make sure that the file exists.
+	if [ ! -f "$1" ]; then
+		return 1
+	fi
+
+	# Store the argument in a local variable
+	_infile="$1"
+	# local _infile="$1" # Older systems doesn't handle the local cmd
+
+	# Make sure that there each key only exists once.
+	# _before="`cat $_infile | grep '...*' | cut -f 1 -d: | wc -l`"
+	# _after="`cat $_infile | grep '...*' | cut -f 1 -d: | sort | uniq | wc -l`"
+
+	# if [ $_before -ne $_after ]; then
+		# # Clear the screen
+		# if [ "${_CLEARSCREEN}" = "YES" ]; then
+			# clear
+		# fi
+
+		# domsg ""
+		# domsg ""
+		# domsg "Error in configfile: Double keys found in configfile!"
+		# domsg ""
+		# domsg ""
+		# domsg "Press return to exit..."
+		# read resp
+		# unset resp
+
+		# cleanandexit 1
+	# fi
+
+	unset _before
+	unset _after
+
+	# Set some global defaults
+	setglobalcfgdefaults
+
+	# Read the configuration file.
+	if [ $_PREPARSERDEBUG ]; then
+		dkw="-v setdebugmode=yes"
+	else
+		dkw=""
+	fi
+
+	#
+	# NOTE: All dollar-signs ($) used in the awk script below needs to be
+	# escaped with a backslash ( \$ ) to work.
+	#
+	#
+	_key="TRUE"
+	varcounter=0
+	varlist=""
+	cat $_infile | awk $dkw '
+	BEGIN {
+		# Set some default values
+		origin = ""
+		varcount = 0
+		bufcount = 0
+
+		# Should we run in debug mode ?
+		if( length(setdebugmode) != 0 )
+			debugmode = "yes"
+		else
+			debugmode = "no"
+
+		# Regular expression defining the exact usage of the commands
+		# in the format (Case etc) that Easymenu understands it.
+		# Misc and global option
+		cfgcmd[0] = "CLEARSCREEN"
+		cfgcmd[1] = "ALLOWKILL"
+		cfgcmd[2] = "BGPATH"
+		cfgcmd[3] = "TEMPROOT"
+		cfgcmd[4] = "PS1"
+		cfgcmd[5] = "OPTIONS"
+		cfgcmd[6] = "EXECSHELL"
+		cfgcmd[7] = "MENUBGPREFIX"
+		cfgcmd[8] = "MENUBGSUFFIX"
+		cfgcmd[9] = "PREMAINMSG"
+		cfgcmd[10] = "POSTMAINMSG"
+		cfgcmd[11] = "MINIMODECREATOR"
+		cfgcmd[12] = "@\.CHOICES"
+		cfgcmd[13] = "@\.PREBG"
+		cfgcmd[14] = "@\.POSTBG"
+		cfgcmd[15] = "@\.READCMD"
+
+		# Menuspecific commands
+		cfgcmd[100] = "MENUBG"
+		cfgcmd[101] = "CHOICES"
+		cfgcmd[102] = "CMD"
+		cfgcmd[103] = "CMD.EXEC"
+		cfgcmd[104] = "CMD.INT"
+		cfgcmd[105] = "CMD.ARG"
+		cfgcmd[106] = "OPTIONS"
+		cfgcmd[107] = "PREBG"
+		cfgcmd[108] = "POSTBG"
+		cfgcmd[109] = "PS1"
+		cfgcmd[110] = "C2FILE"
+		cfgcmd[111] = "READCMD"
+		cfgcmd[112] = "TXT"
+	}
+
+	END {
+		# Add the configuration for the static variables
+		varlist=""
+		for( i=0; i < varcount; i++)
+		{
+			varlist = varlist varname[i] " "
+			cfgbuf[bufcount++] = "--VARIABLE." varname[i] ":" varvalue[i]
+		}
+		cfgbuf[bufcount++] = "--VARIABLELIST:" varlist
+
+		# Output the whole config
+		if( debugmode == "yes" )
+			for( i=0; i < bufcount; i++)
+				print cfgbuf[i] > "/dev/stderr"
+		else
+		{
+			for( i=0; i < bufcount; i++)
+			{
+				c = index(cfgbuf[i], ":")
+				key = substr(cfgbuf[i], 0, c - 1)
+				if( c < length(cfgbuf[i]) )
+				{
+					c++
+					value = substr(cfgbuf[i], c)
+				}
+				else
+				{
+					value = ""
+				}
+
+				print key
+				print value
+			}
+
+			print "__END_OF_PREPROCESSOR_OUTPUT__"
+		}
+	}
+
+	### BEGIN Record pre-processor ###
+	# Remove comments
+	/^#[^\.].*/ {
+		next
+	}
+
+	# Remove all leading spaces
+	/^(\t| )+/ {
+		gsub(/^(\t| )+/, "")
+	}
+
+	# Make all config commands to upper-case
+	{
+		IGNORECASE=1
+		for(i in cfgcmd)
+			gsub(cfgcmd[i] ":", cfgcmd[i] ":")
+
+		IGNORECASE=0
+	}
+	# Special solution for the CMDx. commands
+	/^.*\.[Cc][Mm][Dd][0-9][0-9]*\.([Ee][Xx][Ee][Cc]|[Ii][Nn][Tt]|[Aa][Rr][Gg]):/ {
+		IGNORECASE=1
+		match($0, /^.*\.CMD[0-9][0-9]*\.(EXEC|INT|ARG):/)
+		cmd = substr($0, RSTART, RLENGTH)
+		cmd = toupper(cmd)
+		gsub(cmd, cmd)
+		IGNORECASE=0
+	}
+
+	### END Record pre-processor ###
+	
+	### BEGIN Keyword handler ###
+	# Change the current origin
+	/^\\$ORIGIN.*/ {
+	
+		# We should have one or zero arguments to $ORIGIN
+		if ( NF > 2 )
+		{
+			print "ERROR: Too many arguments for $ORIGIN at line " NR "." > "/dev/stderr"
+		exit 1
+		}
+	
+		# Set the origin
+		if ( NF == 2 )
+			origin = $2
+	else
+			origin = ""
+	
+		# Continue with the next line
+		next
+	}
+	
+	# Handle static pre-configured variables
+	/^\\$VAR.*/ {
+	
+		# We need atleast three fields here.
+		if( NF < 3 )
+		{
+			print "ERROR: Not enough arguments for $VAR at line " NR "." > "/dev/stderr"
+			exit 1
+		}
+	
+		# The variable name may only contain charters A-Z, a-z and 0-9 and must
+		# start with a letter.
+		if( $2 !~ /^[A-Za-z][A-Za-z0-9]*$/ )
+		{
+			print "ERROR: Bad name for variable at line " NR "." > "/dev/stderr"
+			exit 1
+		}
+	
+		# Put togather the variable argument
+		s = ""
+		for(i=3; i <= NF; i++)
+			if( length(s) == 0 )
+				s = $i
+			else
+				s = s FS $i
+	
+		# Store the variable data for output in the END section
+		varname[varcount] = $2
+		varvalue[varcount] = s
+		varcount++
+	
+		# Continue with the next line
+		next
+	}
+	
+	# Handle unknown commands that has not yet been handled.
+	# This will occure for all records which starts with a dollar char ($) that
+	# is not followed by a dot.
+	/^\\$[^\.]..*/ {
+		print "ERROR: Unknown keyword found at line " NR "." > "/dev/stderr"
+		exit 1
+	}
+	### END Keyword handler ###
+	
+	# Handle normal config entries, empty lines are ignored
+	/..*/ {
+	
+		# Add origin if needed
+		if( length(origin) > 0 )
+			output = origin "." $0
+		else
+			output = $0
+	
+		# Output the result
+		cfgbuf[bufcount++] = output
+	} ' | while read record
+	do
+		if [ "$record" = "__END_OF_PREPROCESSOR_OUTPUT__" ]; then
+			echo "GLOBAL_VARIABLE_COUNTER=${varcounter}" >> ${_TEMPROOT}/empptf.$$
+			echo "GLOBAL_VARIABLE_LIST=\"${varlist}\"" >> ${_TEMPROOT}/empptf.$$
+		else
+			case $_key in
+				TRUE)		# This record is a keyword
+					# Store the keyword
+					_keyword="$record"
+	
+					_key="FALSE"
+					;;
+
+				FALSE)	# This record contains the current records value
+					varlist="${varlist} ${_keyword} ${varcounter}"
+					echo "CFGVARIABLE_${varcounter}=\"${record}\"" >> ${_TEMPROOT}/empptf.$$
+					varcounter=`expr $varcounter + 1`
+
+					_key="TRUE"
+					;;
+			esac
+		fi
+	done
+
+	# Read in the extracted configuration and remove temporary file
+	. ${_TEMPROOT}/empptf.$$
+	# rm -f ${_TEMPROOT}/empptf.$$
+
+
+	# Exit if there was an error, or the -p flag was used
+	if [ "X${GLOBAL_VARIABLE_LIST}" = "X" ]; then
+		if [ $_PREPARSERDEBUG ]; then
+			cleanandexit 0
+		else
+			cleanandexit 1
+		fi
+	else
+		### Some work might be needed here to get the -c option working ###
+	fi
+
+	# Unset temporary variables
+	unset dkw
+
+	# Return success
+	return 0
+}
+
+### END cfgfile_init() ###
+
+#############################################################
+#                                                           #
+#      Name: cfgfile_get                                    #
+#   Version: 2.0                                            #
+#    Author: Ola Eriksson                                   #
+#   Changed: 2002-07-02                                     #
+#                                                           #
+#     Usage: cfgfile_get <entry>                            #
+#                                                           #
+#############################################################
+cfgfile_get()
+{
+	# We need exacly one argument.
+	if [ $# -ne 1 ]; then
+		return 1
+	fi
+
+	# Store argument
+	_get="$1"
+
+
+	_key="TRUE"
+	for record in $GLOBAL_VARIABLE_LIST
+	do
+		case $_key in
+			TRUE)
+				curkey="${record}"
+
+				_key="FALSE"
+				;;
+
+			FALSE)
+				_value="$record"
+				if [ "$_get" = "$curkey" ]; then
+						eval ret=\"\$CFGVARIABLE_${_value}\"
+						echo "${ret}"
+
+						return 0
+				fi
+
+				_key="TRUE"
+				;;
+		esac
+	done
+
+	return 1
+}
+
+cfgfile_get_old()
+{
+	# We need exacly one argument.
+	if [ $# -ne 1 ]; then
+		return 1
+	fi
+
+	# Store argument
+	_get="$1"
+	# local _get="$1" # Older systems doesn't understand the local cmd
+
+	if [ -z "$_AWKCFGSTYLE" ]; then
+		# Store the old IFS and set a new one.
+		# local _oifs # Older systems doesn't understand the local cmd
+		_oifs="$IFS"
+		IFS=";#&;"
+
+		# Parse trough all entries in the config file.
+		# local _entry  # Older systems doesn't understand the local cmd
+		# local _option
+		# local _arg
+		#
+		# Note: There are some parts of this for loop which won't work on
+		# all systems, therefor there is an oldstyle version, which is
+		# ALOT slower, but should work on more systems, and a normal
+		# version which should be used whenever possible. Also, there are
+		# two versions of the for loop, even though there are just a few
+		# lines that has changed, this is to speed things up as much as
+		# possible by avoiding another repeating if statement.
+		if [ -z "${_OLDSTYLE}" ]; then
+			for _entry in $GLOBAL_CONFIG_STR
+			do
+				# REMOVED: The cfgfile pre-processor makes sure that there are
+				#          no empty lines in the configuration.
+				# Do not parse empty strings
+				# if [ -z "${_entry}" ]; then
+				#	continue
+				# fi
+	
+				# Extract option and argument
+				_option="${_entry%%:*}"
+				_arg="${_entry#*:}"
+	
+				if [ "$_option" = "$_get" ]; then
+					printf "%s" "$_arg"
+		
+					# Restore old IFS
+					IFS="$_oifs"
+	
+					# Return success
+					return 0
+				fi
+			done
+		else
+			for _entry in $GLOBAL_CONFIG_STR
+			do
+				# REMOVED: The cfgfile pre-processor makes sure that there are
+				#          no empty lines in the configuration.
+				# Do not parse empty strings
+				# if [ -z "${_entry}" ]; then
+					# continue
+				# fi
+	
+				# Extract option and argument
+				_option="`echo ${_entry} | cut -f 1 -d:`"
+				_arg="`echo ${_entry} | cut -f 2- -d:`"
+	
+				if [ "$_option" = "$_get" ]; then
+					printf "$_arg"
+	
+					# Restore old IFS
+					IFS="$_oifs"
+		
+					# Return success
+					return 0
+				fi
+			done
+		fi
+
+
+		# Restore IFS
+		IFS="$_oifs"
+	else
+		# Create the awkscript to execute
+		awkscript="BEGIN { RS=\";#\&;\" } /^${_get}:/ { gsub(\"^${_get}:\", \"\" ) ; print \$0 }"
+		echo ${GLOBAL_CONFIG_STR} | awk "${awkscript}"
+		return 0
+	fi
+
+	# If we gotten to this stage, then we could not find the argument
+	# we where looking for, so we'll return a failure.
+	return 1
+}
+### END cfgfile_get() ###
+
+#############################################################
+#                                                           #
+#      Name: cfgfile_set                                    #
+#   Version: 1.1                                            #
+#    Author: Ola Eriksson                                   #
+#   Changed: 2002-06-01                                     #
+#                                                           #
+#     Usage: cfgfile_set <entry>:<value>                    #
+#                                                           #
+#      Note: Be VERY carefull when using this function,     #
+#            it can break the whole application if the      #
+#            inserted data doesn't match the used format.   #
+#                                                           #
+#############################################################
+cfgfile_set()
+{
+	#-*-* Should make sure we have all arguments here!
+
+	# Get key and value from argument
+	newkey="${1}"
+	shift
+	newvalue="${*}"
+
+	GLOBAL_VARIABLE_LIST="${GLOBAL_VARIABLE_LIST} ${newkey} ${GLOBAL_VARIABLE_COUNTER}"
+	eval CFGVARIABLE_${GLOBAL_VARIABLE_COUNTER}=\"${newvalue}\"
+
+	eval v="\${CFGVARIABLE_${GLOBAL_VARIABLE_COUNTER}}"
+	echo $v
+	export CFGVARIABLE_${GLOBAL_VARIABLE_COUNTER}
+
+	GLOBAL_VARIABLE_COUNTER=`expr ${GLOBAL_VARIABLE_COUNTER} + 1`
+
+}
+
+cfgfile_set_old()
+{
+	# We need atleast one argument
+	if [ $# -lt 1 ]; then
+		return 1
+	fi
+
+	# Store the argument
+	_entry="${*}"
+
+	# Remove all inserted keys from the current configuration
+	_oifs="${IFS}"
+	IFS=";"
+	for I in $_entry
+	do
+		# Extract the command
+		if [ -z "${_OLDSTYLE}${_AWKCFGSTYLE}" ]; then
+			_command="${_entry%%:*}"
+		else
+			_command="`echo ${_entry} | cut -f 1 -d:`"
+		fi
+ 
+		# Temporary restore the IFS, and remove the variable from the current
+		# config, if it exists.
+		IFS="${_oifs}"
+		cfgfile_remove ${_entry}
+		IFS=";"
+	done
+	IFS="${_oifs}"
+	unset _oifs
+	unset _command
+
+	# Insert the option into the 'configstring'
+	GLOBAL_CONFIG_STR="`echo ${_entry} | sed -e 's/\;/;#\&;/' `;#&;${GLOBAL_CONFIG_STR}"
+
+	# Unset temporary variables
+	unset _entry
+}
+### END cfgfile_set() ###
+
+#############################################################
+#                                                           #
+#      Name: cfgfile_remove                                 #
+#   Version: 1.0                                            #
+#    Author: Ola Eriksson                                   #
+#   Changed: 2002-04-28                                     #
+#                                                           #
+#     Usage: cfgfile_remove <entry>                         #
+#    Return: 0 - Variable removed, 1 - Variable not found   #
+#                                                           #
+#############################################################
+cfgfile_remove()
+{
+	# We need exacly one argument.
+	if [ $# -ne 1 ]; then
+		return 1
+	fi
+
+	# Store argument
+	_remove="$1"
+
+	# Store the old IFS and set a new one.
+	# local _oifs # Older systems doesn't understand the local cmd
+	_oifs="$IFS"
+	IFS=";#&;"
+
+	# Note: There are some parts of this for loop which won't work on
+	# all systems, therefor there is an oldstyle version, which is
+	# ALOT slower, but should work on more systems, and a normal
+	# version which should be used whenever possible. Also, there are
+	# two versions of the for loop, even though there are just a few
+	# lines that has changed, this is to speed things up as much as
+	# possible by avoiding another repeating if statement.
+	unset _tmp_global_config_str
+	_returnvalue=1
+	if [ -z "${_OLDSTYLE}" ]; then
+		for _entry in $GLOBAL_CONFIG_STR
+		do
+			# Extract the option
+			_option="${_entry%%:*}"
+
+			# If this isn't the variable to remove, then keep it in the config.
+			if [ "$_option" != "$_remove" ]; then
+				_tmp_global_config_str="${_tmp_global_config_str};#&;${_entry}"
+			else
+				_returnvalue=0
+			fi
+		done
+	else
+		for _entry in $GLOBAL_CONFIG_STR
+		do
+			# Extract the option
+			_option="`echo ${_entry} | cut -f 1 -d:`"
+
+			if [ "$_option" = "$_remove" ]; then
+				_tmp_global_config_str="${_tmp_global_config_str};#&;${_entry}"
+			else
+				_returnvalue=0
+			fi
+		done
+	fi
+
+	# Restore IFS
+	IFS="$_oifs"
+
+	# Apply the new configuration
+	GLOBAL_CONFIG_STR="${_tmp_global_config_str}"
+
+	# Remove some variables
+	unset _tmp_global_config_str
+	unset _oifs
+	unset _remove
+
+	# Exit function with true if atleast one variable was removed, and
+	# false otherwise.
+	return $_returnvalue
+}
+### END cfgfile_remove() ###
+
+### BEGIN domsg() ###
+#  Return values:
+#    0: Message shown
+#    1: Message not shown due to "quiet mode"
+#
+domsg()
+{
+	if [ $_SHOWMESSAGES != "YES" ]; then
+		return 1
+	fi
+
+	echo $1
+
+	return 0
+}
+### END domsg() ###
+
+### BEGIN cleanandexit() ###
+cleanandexit()
+{
+	# Remove temporary files here
+
+
+	# Quit
+	exit $1
+}
+### END cleanandexit() ###
+
+### BEGIN showusage() ###
+showusage()
+{
+	echo "Usage: easymenu [-oap] [-c <var>:<value>] [config]"
+	echo "       easymenu -v"
+	exit 1
+}
+### END showusage() ###
+
+### BEGIN showversion() ###
+showversion()
+{
+	echo "Easymenu ${__version} by Ola Eriksson <ola@mreriksson.net>"
+	echo "Please visit http://www.mreriksson.net/dev for the latest news!"
+	exit 1
+}
+
+### BEGIN missingmenubgfile() ###
+missingmenubgfile()
+{
+	# Clear the screen
+	if [ "${_CLEARSCREEN}" = "YES" ]; then
+		clear
+	fi
+
+	# Show error message
+	domsg ""
+	domsg ""
+	domsg "Error in configfile: Required menufile for choice ${currentmenu}.${_known_choice} is missing."
+	domsg "Each menu must contain atleast one of the MENUBG, PREBG or POSTBG options."
+	domsg ""
+	domsg "Please contact your system administrator about this problem."
+	domsg ""
+	domsg "Press return to quit..."
+	read _resp
+	unset _resp
+
+	exit 1
+}
+### END missingmenubgfile() ###
+
+### BEGIN unknowninternal() ###
+unknowninternal()
+{
+	# Clear the screen
+	if [ "${_CLEARSCREEN}" = "YES" ]; then
+		clear
+	fi
+
+	domsg ""
+	domsg ""
+	domsg "Error in configfile: Unknown internal command requested for choice ${currentmenu}.${_known_choice}"
+	domsg ""
+	domsg "Please contact your system administrator about this problem."
+	domsg ""
+	domsg "Press return to quit..."
+	read _resp
+	unset _resp
+
+	exit 1
+}
+### END unknowninternal() ###
+
+### BEGIN handleinternal() ###
+#
+#  Usage: handleinternal <cmd> <arg>
+#
+#  Return values:
+#         0: Everything OK
+#         1: Empty commandstring
+#         2: Unknown command
+#
+handleinternal()
+{
+	# Did we get the needed argument ?
+	if [ $# -lt 1 ]; then
+		return 1
+	fi
+
+	# Extract command, and remove it from arglist
+	_cmd="${1}"
+	# local _cmd="${1}" # Older systems doesn't understand the local cmd
+	shift
+
+	# Extract arguments
+	_arg="${*}"
+	# local _arg="${*}"  # Doesn't work on older systems
+
+	case $_cmd in
+		BACK)	# Back one menu
+			if [ "${currentmenu}" ]; then
+				tmp="${currentmenu%.*}"
+				# Needs special handeling if
+				# we in the first submenu.
+				if [ "${tmp}" = "${currentmenu}" ]; then
+					currentmenu=""
+				else
+					currentmenu="${tmp}"
+				fi
+			fi
+			;;
+
+		QUIT)	# Quit easymenu
+			### BEGIN Show post-mainmsg ###
+			postmainmsg="`cfgfile_get POSTMAINMSG`"
+			if [ "${postmainmsg}" ]; then
+				if [ "${_CLEARSCREEN}" = "YES" ]; then
+					clear
+				fi
+
+				# Show the file
+				if [ -s "${postmainmsg}" ]; then
+					cat ${postmainmsg}
+					printf "%s" "Press return to continue..."
+					read _resp
+					unset _resp
+				else
+					if [ -s "${_BGPATH}/${postmainmsg}" ]; then
+						cat ${_BGPATH}/${postmainmsg}
+						printf "%s" "Press return to continue..."
+						read _resp
+						unset _resp
+					else
+						# Show error message
+						domsg ""
+						domsg ""
+						domsg "Error in configfile: Required menufile for postmainmsg is missing."
+						domsg ""
+						domsg "Please contact your system administrator about this problem."
+						domsg ""
+						domsg "Press return to quit..."
+						read _resp
+						unset _resp
+
+						exit 1
+					fi
+				fi
+
+				# Clear the screen
+				if instring "CLEARONEXIT" $_OPTIONS; then
+					clear
+				fi
+			fi
+			### END Show post-mainmsg ###
+
+			# Exit easymenu
+			cleanandexit
+			;;
+
+		CONFIGDEBUG)	# Show the internal configuration string
+			# Clear the screen
+			if [ "${_CLEARSCREEN}" = "YES" ]; then
+				clear
+			fi
+
+			# Show the internal configuration string
+			echo "${GLOBAL_CONFIG_STR}"
+
+			# Wait for a key
+			printf "%s" "Press return to continue..."
+			read resp
+
+			# Remove the variable to avoid future problems
+			unset resp
+
+			;;
+
+		REFRESH)	# Refresh the screen
+			# Just running the loop once again
+			# without changing any data will
+			# refresh the screen
+
+			continue
+			;;
+
+		GOTO)	# GOTO Command, go to a specific menu
+			currentmenu="${_arg}"
+			;;
+
+		WAIT) # Wait's for CMD.ARG seconds.
+			if ( echo ${_arg} | grep '[1-9][0-9]*' >/dev/null 2>/dev/null ); then
+				sleep ${_arg}
+			else
+				domsg "ERROR: Not a valid argument for internal command 'WAIT'"
+				cleanandexit 1
+			fi
+			;;
+
+		WAITRETURN) # Wait for a return key from the user before we continue.
+			_prompt="${_arg:-${__default_waitreturn_prompt}}"
+			printf "%s" "${_prompt}"
+			read _resp
+
+			unset _resp
+			unset _prompt
+			;;
+				
+		CFGSET)	# Set a configuration variable
+			if ( echo ${_arg} | grep '..*:..*' >/dev/null 2>/dev/null ); then
+				cfgfile_set "${_arg}"
+			else
+				domsg "ERROR: Bad argument format for internal command CFGSET."
+				cleanandexit 1
+			fi
+
+			# Re-read all global configurations
+			readglobalconfiguration
+			;;
+
+		CFGREMOVE) # Used to remove options from the configuration
+			if [ "${_arg}" ]; then
+				cfgfile_remove "${_arg}"
+			else
+				domsg "ERROR: No argument for internal command CFGREMOVE."
+				cleanandexit 1
+			fi
+
+			# Re-read all global configurations
+			readglobalconfiguration
+			;;
+
+		CFGRELOAD) # Reloads the current configuration file.
+			if [ ! -f ${_CONFIGFILE} ]; then
+				domsg "ERROR: CFGRELOAD - Configfile not found. (${_CONFIGFILE})"
+				cleanandexit 1
+			fi
+
+			# Make sure that the configfile doesn't contain a semi-colon
+			if grep ';#&;' ${_CONFIGFILE} >/dev/null 2>/dev/null ; then
+				domsg "ERROR: CFGRELOAD - Configfile may not contain the char combination ';#&;'."
+				cleanandexit 1
+			fi
+
+			# Remove the old config from memory
+			unset GLOBAL_CONFIG_STR
+
+			# Re-read the config
+			cfgfile_init "${_CONFIGFILE}"
+
+			# Extract some global info from the configfile
+			readglobalconfiguration
+			;;
+
+		CFGLOADNEWFILE)	# Load a new configfile on-the-fly
+			if [ -z "${_arg}" ]; then
+				domsg "ERROR: CFGLOADNEWFILE - Argument required."
+				cleanandexit 1
+			fi
+
+			# Set the path to the new configfile to load
+			_CONFIGFILE="${_arg}"
+
+			# Make sure that the file exists and contains a usable config
+			if [ ! -f ${_CONFIGFILE} ]; then
+				domsg "ERROR: CFGLOADNEWFILE - Configfile not found. (${_CONFIGFILE})"
+				cleanandexit 1
+			fi
+
+			# Make sure that the configfile doesn't contain a semi-colon
+			if grep ';#&;' ${_CONFIGFILE} >/dev/null 2>/dev/null ; then
+				domsg "ERROR: CFGLOADNEWFILE - Configfile may not contain the char combination ';#&;'."
+				cleanandexit 1
+			fi
+
+			# Remove the old config from memory
+			unset GLOBAL_CONFIG_STR
+
+			# Re-read the config
+			cfgfile_init "${_CONFIGFILE}"
+
+			# Extract some global info from the configfile
+			readglobalconfiguration
+			;;
+
+		SETMENUBGPREFIX)	# Change the bgmenufile prefix
+			if [ "${_arg}" ]; then
+				cfgfile_set "MENUBGPREFIX:${_arg}"
+
+				# Extract some global info from the configfile
+				readglobalconfiguration
+			else
+				domsg "ERROR: SETMENUBGPREFIX - Needs an argument."
+			fi
+			;;
+
+		SETMENUBGSUFFIX)	# Change the menubgfile suffix
+			if [ "${_arg}" ]; then
+				cfgfile_set "MENUBGSUFFIX:${_arg}"
+
+				# Extract some global info from the configfile
+				readglobalconfiguration
+			else
+				domsg "ERROR: SETMENUBGSUFFIX - Needs an argument."
+			fi
+			;;
+
+		READ)	# Read a string from the user
+			if [ "${_arg}" ]; then
+				read resp
+		 		setemenv $_arg $resp
+				unset resp
+			else
+				domsg "ERROR: Internal command READ requires an argument."
+				cleanandexit 1
+			fi
+			;;
+
+		ENVSET) # Set an ENV variable
+			if [ "${_arg}" ]; then
+				if ( echo ${_arg} | grep '[A-Za-z0-9][A-Za-z0-9]* ..*' > /dev/null 2> /dev/null ); then
+					setemenv ${_arg}
+
+				else
+					domsg "ERROR: ENVSET - Required argument format: <name> <value>"
+					cleanandexit 1
+				fi
+			else
+				domsg "ERROR: Internal command ENVSET requires an argument."
+				cleanandexit 1
+			fi
+			;;
+
+		ENVREMOVE) * Remove an ENV variable
+			if [ "${_arg}" ]; then
+				if ( echo ${_arg} | grep '^[A-Za-z0-9][A-Za-z0-9]*$' > /dev/null 2> /dev/null ); then
+					removeemenv ${_arg}
+				else
+					domsg "ERROR: ENVREMOVE - Required argument format: <varname>"
+					cleanandexit 1
+				fi
+			else
+				domsg "ERROR: Internal command ENVREMOVE requires an argument."
+				cleanandexit 1
+			fi
+			;;
+
+		NULL) # Does nothing
+			;;
+
+		*)	# Unknown
+			# Show a message about this.
+			unknowninternal
+			;;
+	esac
+}
+### END handleinternal() ###
+
+### BEGIN cfgerrorhandler() ###
+cfgerrorhandler()
+{
+	# Clear the screen
+	if [ "${_CLEARSCREEN}" = "YES" ]; then
+		clear
+	fi
+
+	domsg ""
+	domsg ""
+	domsg "Error in configfile: Nothing configured for choice ${currentmenu}.${_known_choice}"
+	domsg ""
+	domsg "Please contact your system administrator about this problem."
+	domsg ""
+	domsg "Press return to quit..."
+	read _resp
+	unset _resp
+
+	exit 1
+}
+### END cfgerrorhandler() ###
+
+### BEGIN instring() ###
+#
+#  Usage:
+#    instring <word> <String>
+#
+#  Return Values:
+#    0: Found <Word> in <String>
+#    1: Not found
+#
+instring()
+{
+	# Extract word and remove it from argumentlist
+	_word="${1}"
+	# local _word="${1}" # local does not work on older systems
+	shift
+
+	for i in ${*}
+	do
+		if [ "${i}" = "${_word}" ]; then
+			return 0
+		fi
+	done
+
+	return 1
+}
+### END instring() ###
+
+### BEGIN removewordinstring() ###
+#
+#  Usage:
+#    removewordinstring <word> <string>
+#
+#  Output:
+#    The string, with the specified word removed
+#
+#  Return Values:
+#    0: Found <Word> in <String> and removed it
+#    1: Not found
+#
+removewordinstring()
+{
+	# Extract word and remove it from argumentlist
+	_word="${1}"
+	shift
+
+	unset tmpstr
+	ret=1
+
+	# Scan trough the string
+	for i in ${*}
+	do
+		if [ "${i}" != "${_word}" ]; then
+			if [ "$tmpstr" ]; then
+				tmpstr="$tmpstr $i"
+			else
+				tmpstr="$i"
+			fi
+		else
+			ret=0
+		fi
+	done
+
+	# Output the result string
+	echo $tmpstr
+
+	# Unset temporary variables
+	unset tmpstr
+
+	return $ret
+}
+### END removewordinstring() ###
+
+#############################################################
+#                                                           #
+#      Name: twiddle()                                      #
+#   Version: 1.0                                            #
+#    Author: Ola Eriksson                                   #
+#   Changed: 2002-03-30 17:36                               #
+#      Note: This function originates from the NetBSD       #
+#            installation scripts.                          #
+#            Please visit http://www.netbsd.org             #
+#                                                           #
+#     Usage: _pid=`twiddle`                                 #
+# StopUsage: kill $_pid                                     #
+#                                                           #
+#############################################################
+twiddle() {
+# spin the propeller so we don't get bored
+	while : ; do  
+		sleep 1; printf "%s" "/";
+		sleep 1; printf "%s" "-";
+		sleep 1; printf "%s" "\\";
+		sleep 1; printf "%s" "|";
+	done > /dev/tty & echo $!
+}
+### END twiddle() ###
+
+### BEGIN multicmdhandler() ###
+#
+#  Usage: multicmdhandler [<menu>]
+# 
+#  <menu> is the menu which should be checked for the multiple
+#  command specifications. This is optional and the current menu will
+#  be inserted by default. This is used to get the function to handle
+#  global choices aswell as local ones.
+#
+multicmdhandler()
+{
+	base="${1:-${currentmenu}}"
+	_count=1
+	while :
+	do
+		if [ -z "${base}" ]; then
+			_extra_cmd_exec="`cfgfile_get ${_known_choice}.CMD${_count}.EXEC`"
+			_extra_cmd_int="`cfgfile_get ${_known_choice}.CMD${_count}.INT`"
+			_extra_cmd_arg="`cfgfile_get ${_known_choice}.CMD${_count}.ARG`"
+			_extra_cmd_opt="`cfgfile_get ${_known_choice}.CMD${_count}.OPTIONS`"
+		else
+
+			_extra_cmd_exec="`cfgfile_get ${base}.${_known_choice}.CMD${_count}.EXEC`"
+			_extra_cmd_int="`cfgfile_get ${base}.${_known_choice}.CMD${_count}.INT`"
+			_extra_cmd_arg="`cfgfile_get ${base}.${_known_choice}.CMD${_count}.ARG`"
+			_extra_cmd_opt="`cfgfile_get ${base}.${_known_choice}.CMD${_count}.OPTIONS`"
+		fi
+
+		# 'OPTIONS' arn't allowed in CMD<x>, they
+		# can only be specified once per choice.
+		if [ "${_extra_cmd_opt}" ]; then
+			# Clear the screen
+			if [ "${_CLEARSCREEN}" = "YES" ]; then
+				clear
+			fi
+				
+			# Show error message
+			domsg ""
+			domsg ""
+			domsg "Error in configfile - ${base}.${_known_choice}:"
+			domsg "OPTIONS can't be used under .CMD or .CMD<x>."
+			domsg ""
+			domsg "Please contact your system administrator about this problem."
+			domsg ""
+			domsg "Press return to quit..."
+			read _resp
+			unset _resp
+
+			# Exit
+			cleanandexit 1
+		fi
+
+		# Execute the command, if any
+		if [ "${_extra_cmd_exec}" ]; then
+			if availibleforexec $_extra_cmd_exec; then
+				if instring "CURRENTSHELL" $_cmd_opt; then
+					$_extra_cmd_exec
+				else
+					execwithshell "$_extra_cmd_exec"
+				fi
+			else
+				execcmdnotavailible $_extra_cmd_exec
+			fi
+		fi
+
+		# Execute internal command, if any
+		if [ "${_extra_cmd_int}" ]; then
+			handleinternal $_extra_cmd_int $_extra_cmd_arg
+		fi
+
+		# End of list ? Neither INT nor EXEC availible
+		if [ -z "${_extra_cmd_exec}${_extra_cmd_int}" ]; then
+			# List can start with either CMD1
+			# or CMD2, therefor we should not
+			# quit if CMD1 isn't found.
+			if [ $_count -ne 1 ]; then
+				break
+			fi
+		fi
+
+		# Increase counter
+		_count=`expr ${_count} + 1`
+	done
+}
+### END multicmdhandler() ###
+
+#############################################################
+#                                                           #
+#      Name: execwithshell                                  #
+#   Version: 1.0                                            #
+#    Author: Ola Eriksson                                   #
+#   Changed: 2002-04-01                                     #
+#                                                           #
+#     Usage: execwithshell <cmd and arguments>              #
+#                                                           #
+#############################################################
+execwithshell()
+{
+	# We need atleast one argument
+	if [ $# -lt 1 ]; then
+		return 1
+	fi
+
+	# Store the command that we are suppose to execute in a variable
+	_instr="${*}"
+
+	# Create the string to execute
+	_execstr="EM_COMMAND=\"${_instr}\""
+	_execstr="${_execstr} ; EM_MENUCHOICES=\"${choices}\""
+	if [ "${currentmenu}" ]; then
+		_execstr="${_execstr} ; EM_FULLCHOICE=\"${currentmenu}.${_known_choice}\""
+	else
+		_execstr="${_execstr} ; EM_FULLCHOICE=\"${_known_choice}\""
+	fi
+	_execstr="${_execstr} ; EM_CHOICE=\"${_known_choice}\""
+	_execstr="${_execstr} ; EM_GLOBALCHOICES=\"${_GLOBALCHOICES}\""
+	_execstr="${_execstr} ; EM_MENU=\"${currentmenu}\""
+	_execstr="${_execstr} ; EM_BGPATH=\"${_BGPATH}\""
+	if [ "${ps1prompt}" ]; then
+		_execstr="${_execstr} ; EM_PS1=\"${ps1prompt}\""
+	else
+		_execstr="${_execstr} ; EM_PS1=\"${_PS1}\""
+	fi
+	_execstr="${_execstr} ; EM_VERSION=\"${__version}\""
+
+	# Add variables from the configfile
+	if [ "$_CFGENVVARIABLES" ]; then
+		_execstr="${_execstr} ; ${_CFGENVVARIABLES}"
+	fi
+
+	# Add the command to execute
+	_execstr="${_execstr} ; ${_instr}"
+
+	# Execute the command
+	$_execshell "$_execstr"
+
+	# Unset temporary variables
+	unset _execstr
+	unset _instr
+}
+### END execwithshell() ###
+
+#############################################################
+#                                                           #
+#      Name: availibleforexec                               #
+#   Version: 1.0                                            #
+#    Author: Ola Eriksson                                   #
+#   Changed: 2001-07-24                                     #
+#                                                           #
+#     Usage: availibleforexec <cmd>                         #
+#     Will check if <cmd> is availible as an absolute path  #
+#     or availible in any of the PATH's availible.          #
+#                                                           #
+#############################################################
+availibleforexec()
+{
+	# We need atleast one argument.
+	if [ $# -lt 1 ]; then
+		return 2 
+	fi
+
+	_cmd="${1}"
+	# local _cmd="${1}" # Does not work on older systems
+
+	# Does it exist as an absolute path specification?
+	if [ -x "${_cmd}" ]; then
+		# Yes, return true
+		return 0
+	fi
+
+	# Check if it's availible in our PATH
+	_oifs="${IFS}"
+	# local _oifs="${IFS}" # Does not work on older systems
+	IFS=":"
+	# local p # Does not work on older systems
+	for p in ${PATH}
+	do
+		if [ -x "${p}/${_cmd}" ]; then
+			# Restore IFS
+			IFS="${_oifs}"
+
+			# Return true
+			return 0
+		fi
+	done
+
+	# Restore IFS
+	IFS="${_oifs}"
+
+	# We couldn't find it, return non-true
+	return 1
+}
+### END availibleforexec() ###
+
+### BEGIN execcmdnotavailible() ###
+execcmdnotavailible()
+{
+	# Clear the screen
+	if [ "${_CLEARSCREEN}" = "YES" ]; then
+		clear
+	fi
+
+	domsg ""
+	domsg ""
+	domsg "ERROR: Command requested for execution is not availible in the PATH."
+	domsg ""
+	domsg "Tried to execute: ${*}"
+	domsg ""
+	domsg ""
+
+	# Exit if the NOEXECBREAK option isn't set.
+	if instring NOEXECBREAK $_OPTIONS; then
+		if instring "NOKEY" $_cmd_opt; then
+			printf "\n"
+			printf "Press return to continue..."
+			read _resp
+			unset _resp
+		fi
+	else
+		domsg "Press return to quit..."
+
+		read _resp
+		unset _resp
+
+		cleanandexit 1
+	fi
+
+}
+### END execcmdnotavailible() ###
+
+
+### BEGIN readglobalconfiguration() ###
+#
+# Used to read global configuration variables from the cfgfile.
+# This method should be executed whenever the configuration has
+# been changed in some way.
+#
+readglobalconfiguration()
+{
+	# Extract some global info from the configfile
+	_CLEARSCREEN="`cfgfile_get CLEARSCREEN`"
+	_ALLOWKILL="`cfgfile_get ALLOWKILL`"
+	_BGPATH="`cfgfile_get BGPATH`"
+	_OPTIONS="`cfgfile_get OPTIONS`"
+	_execshell="`cfgfile_get EXECSHELL`"
+	_MENUBGPREFIX="`cfgfile_get MENUBGPREFIX`"
+	_MENUBGSUFFIX="`cfgfile_get MENUBGSUFFIX`"
+	_TEMPROOT="`cfgfile_get TEMPROOT`"
+	_GLOBALCHOICES="`cfgfile_get ${__global_choice_prefix}.CHOICES`"
+	_GLOBALPREBG="`cfgfile_get ${__global_choice_prefix}.PREBG`"
+	_GLOBALPOSTBG="`cfgfile_get ${__global_choice_prefix}.POSTBG`"
+	_GLOBALREADCMD="`cfgfile_get ${__global_choice_prefix}.READCMD`"
+	_PS1="`cfgfile_get PS1`"
+	_MINIMODEBGCREATOR="`cfgfile_get MINIMODECREATOR`"
+
+	# Set default values for settings not found in the config
+	setglobalcfgdefaults
+
+	# Do some work based on these global varianles
+	if instring MINIMODE ${_OPTIONS}; then
+		_MINIMODE="True"
+	else
+		unset _MINIMODE
+	fi
+
+	# Most of these variables shouldn't be changed again, so we'll make
+	# them readonly.
+	## The lines below are commented out because systems like Sun Solaris
+	## doesn't undestand the readonly command.
+	# readonly _CLEARSCREEN
+	# readonly _ALLOWKILL
+	# readonly _BGPATH
+	# readonly _PS1
+	# readonly _GLOBALCHOICES
+	# readonly _GLOBALPREBG
+	# readonly _GLOBALPOSTBG
+}
+### END readglobalconfiguration() ###
+
+### BEGIN setglobalcfgdefaults() ###
+#
+# This function sets default values for global configuration variables
+# if no value is set. Mainly used by the readglobalconfiguration()
+# function.
+#
+setglobalcfgdefaults()
+{
+	# Set default values for settings not found in the config
+	_CLEARSCREEN="${_CLEARSCREEN:-YES}"
+	_ALLOWKILL="${_ALLOWKILL:-NO}"
+	_PS1="${_PS1:-Choice: }"
+	_GLOBALREADCMD="${_GLOBALREADCMD:-${__default_read_cmd}}"
+	_TEMPROOT="${_TEMPROOT:-${__default_temproot}}"
+	_execshell="${_execshell:-${__default_exec_shell}}"
+	_MINIMODEBGCREATOR="${_MINIMODEBGCREATOR:-standardminimodebgcreator}"
+}
+### END setglobalcfgdefaults() ###
+
+#############################################################
+#                                                           #
+#      Name: standardminimodebgcreator                      #
+#   Version: 1.0                                            #
+#    Author: Ola Eriksson                                   #
+#   Changed: 2002-05-05                                     #
+#                                                           #
+#     Usage: standardminimodecreator                        #
+#     Reads data from the standard input.                   #
+#                                                           #
+#############################################################
+standardminimodebgcreator()
+{
+	read input
+	while [ $? -eq 0 ]
+	do
+		case "${input}" in
+			BEGIN_GLOBAL_CHOICES)
+				echo ""
+				;;
+
+			BEGIN_LOCAL_CHOICES)
+				echo ""
+				;;
+
+			*)
+				# Extract option and argument
+				if [ -z "${_OLDSTYLE}" ]; then
+					choice="${input%%:*}"
+					text="${input#*:}"
+				else
+					_option="`echo ${_entry} | cut -f 1 -d:`"
+					_arg="`echo ${_entry} | cut -f 2- -d:`"
+				fi
+
+				# Output the result
+				echo "   ${choice}  -${text}"
+				;;
+		esac
+
+		read input
+	done
+
+	# Unset internal variables
+	unset input
+	unset choice
+	unset text
+
+	# Output some blank lines to make it look a bit better.
+	echo ""
+	echo ""
+}
+### END standardminimodebgcreator() ###
+
+#############################################################
+#                                                           #
+#      Name: updateshellvariables                           #
+#                                                           #
+#     Usage: updateshellvariables                           #
+#     Updates the list of variables from the config         #
+#     handler.                                              #
+#                                                           #
+#############################################################
+updateshellvariables()
+{
+	# Fetch a list of availible variables
+	varlist="`cfgfile_get $__keyword_variablelist`"
+
+	# Exit of there are no variables
+	if [ -z "$varlist" ]; then
+		return 0
+	fi
+
+	# Create a new list of variables from the configfile
+	unset _CFGENVVARIABLES
+	for vname in $varlist
+	do
+		vvalue="`cfgfile_get ${__keyword_variableprefix}${vname}`"
+		if [ -z "$_CFGENVVARIABLES" ]; then
+			_CFGENVVARIABLES="${vname}=\"${vvalue}\""
+		else
+			_CFGENVVARIABLES="${_CFGENVVARIABLES} ; ${vname}=\"${vvalue}\""
+		fi
+	done
+
+	# Unset temporary variables
+	unset varlist
+	unset vname
+	unset vvalue
+}
+### END updateshellvariables() ###
+
+#############################################################
+#                                                           #
+#      Name: setemenv                                       #
+#                                                           #
+#     Usage: setemenv <varname> <value>                     #
+#     Sets an environment variable that will be availible   #
+#     when using EXEC.                                      #
+#                                                           #
+#############################################################
+setemenv()
+{
+	# We need atleast two arguments
+	if [ $# -lt 2 ]; then
+		return 1
+	fi
+
+	# Store the variables name and value
+	vname="$1"
+	shift
+	vvalue="$*"
+
+	# Fetch a list of availible variables
+	varlist="`cfgfile_get $__keyword_variablelist`"
+
+	# If variable exists, then remove it.
+	# And if it doesn't, add it to the list.
+	if instring $vname $varlist; then
+		cfgfile_remove "${__keyword_variableprefix}${vname}"
+	else
+		cfgfile_remove "${__keyword_variablelist}"
+		if [ "$varlist" ]; then
+			varlist="$varlist $vname"
+		else
+			varlist="$vname"
+		fi
+
+		# Store the new variablelist
+		cfgfile_set "${__keyword_variablelist}:${varlist}"
+	fi
+
+	# Store the variable and it's value
+	# cfgfile_set "${__keyword_variableprefix}${vname}:${vvalue}"
+	cfgfile_set "asdadas:asdad"
+
+	# Re-read the environment variables and store them in memory for
+	# faster execution later on.
+	updateshellvariables
+
+}
+### END setemenv() ###
+
+#############################################################
+#                                                           #
+#      Name: removeemenv                                    #
+#                                                           #
+#     Usage: removeemenv <varname>                          #
+#     Removes variable from list of variables availible     #
+#     when using EXEC.                                      #
+#                                                           #
+#############################################################
+removeemenv()
+{
+	# We need one argument
+	if [ $# -ne 1 ]; then
+		return 1
+	fi
+
+	# Store name of the variable to remove
+	vname="$1"
+
+	# Fetch a list of availible variables
+	varlist="`cfgfile_get $__keyword_variablelist`"
+
+	# Remove the variable if it exists
+	if [ "${varlist}" ]; then
+		if instring ${vname} ${varlist}; then
+			varlist="`removewordinstring ${vname} ${varlist}`"
+
+			# Remove the old variable list, and insert the new one
+			cfgfile_remove "${__keyword_variablelist}"
+			cfgfile_set "${__keyword_variablelist}:${varlist}"
+
+			# Remove the variable entry
+			cfgfile_remove "${__keyword_variableprefix}${vname}"
+		else
+			return 1
+		fi
+	else
+		return 1
+	fi
+
+	# Re-read the environment variables and store them in memory for
+	# faster execution later on.
+	updateshellvariables
+}
+### END removeemenv() ###
+
+### END Local Functions ###
+
+
+### BEGIN Handle commandline arguments ###
+while [ $# -gt 0 ]
+do
+	case $1 in
+		-o)	# Oldstyle mode
+			_OLDSTYLE="YES"
+			;;
+
+		-a)	# Awkstyle configuration handeling
+			_AWKCFGSTYLE=YES	
+			;;
+
+		-p)	# Pre-parser debug
+			_PREPARSERDEBUG=YES
+			;;
+
+		-v)	# Show version info and quite
+			showversion
+			;;
+
+		-c)	# Configuration option
+			# Need atleast one more argument after this
+			if [ -z "${2}" ]; then
+				showusage
+			fi
+
+			if ( echo ${2} | grep '..*:..*' >/dev/null 2>/dev/null ); then
+				cfgfile_set "${2}"
+				shift	# Since there are two fields for this argument
+			else
+				domsg "ERROR: Bad format for commandline configuration argument."
+				cleanandexit 1
+			fi
+			;;
+
+		-*)	# Unknown argument
+			showusage
+			;;
+
+		*)	# An unknown argument given, we'll threat this
+			# a config file
+			if [ -z "${_CONFIGFILE}" ]; then
+				_CONFIGFILE="$1"
+			else
+				showusage
+			fi
+			;;
+	esac
+	
+	shift
+done
+
+
+### END Handle commandline arguments ###
+
+
+### BEGIN Default values ###
+if [ -z "${_CONFIGFILE}" ]; then
+	if [ -f "${__default_user_cfg_file}" ]; then
+		_CONFIGFILE=$__default_user_cfg_file
+	else
+		_CONFIGFILE=$__default_cfg_file
+	fi
+fi
+_SHOWMESSAGES=${_SHOWMESSAGES:-"YES"}
+
+# Set some initial values to global variables
+GLOBAL_VARIABLE_COUNTER=0
+GLOBAL_VARIABLE_LIST=""
+
+## Lines below are commented out because systems like Sun Solaris
+## doesn't undestand the readonly command.
+# readonly	_CONFIGFILE=${_CONFIGFILE:-${__default_cfg_file}}
+# readonly	_SHOWMESSAGES=${_SHOWMESSAGES:-"YES"}
+### END Default values
+
+
+### BEGIN Parse Configfile ###
+if [ ! -f ${_CONFIGFILE} ]; then
+	domsg "ERROR: Configfile not found. (${_CONFIGFILE})"
+	cleanandexit 1
+fi
+
+# Make sure that the configfile doesn't contain a semi-colon
+if grep ';#&;' ${_CONFIGFILE} >/dev/null 2>/dev/null ; then
+	echo "ERROR: Configfile may not contain the char combination ';#&;'."
+	cleanandexit 1
+fi
+
+cfgfile_init "${_CONFIGFILE}"
+
+# Extract some global info and env variables from the configfile
+readglobalconfiguration
+updateshellvariables
+
+
+### END Parse Configfile ###
+
+### BEGIN Handle signals ###
+if [ "${_ALLOWKILL}" = "NO" ]; then
+	trap "" 2 15 18	# Ignore SIGINT, SIGTERM and SIGTSTP
+fi
+### END Handle signals ###
+
+### BEGIN Pre-loop stuff ###
+
+# Make sure that the global pre- and postbg commands exist.
+if [ "${_GLOBALPREBG}" ]; then
+	if ! availibleforexec ${_GLOBALPREBG}; then
+		domsg "ERROR: Global PREBG command not availible. ('${_GLOBALPREBG}')"
+		cleanandexit 1
+	fi
+fi
+if [ "${_GLOBALPOSTBG}" ]; then
+	if ! availibleforexec ${_GLOBALPOSTBG}; then
+		domsg "ERROR: Global POSTBG command not availible. ('${_GLOBALPOSTBG}')"
+		cleanandexit 1
+	fi
+fi
+		
+### END Pre-loop stuff ###
+
+### BEGIN Initial settings ###
+currentmenu=""
+### END Initial settings ###
+
+### BEGIN Show pre-mainmsg ###
+premainmsg="`cfgfile_get PREMAINMSG`"
+if [ "${premainmsg}" ]; then
+	if [ "${_CLEARSCREEN}" = "YES" ]; then
+		clear
+	fi
+
+	# Show the file
+	if [ -s "${premainmsg}" ]; then
+		cat ${premainmsg}
+		printf "%s" "Press return to continue..."
+		read _resp
+		unset _resp
+	else
+		if [ -s "${_BGPATH}/${premainmsg}" ]; then
+			cat ${_BGPATH}/${premainmsg}
+			printf "%s" "Press return to continue..."
+			read _resp
+			unset _resp
+		else
+			# Show error message
+			domsg ""
+			domsg ""
+			domsg "Error in configfile: Required menufile for premainmsg is missing."
+			domsg ""
+			domsg "Please contact your system administrator about this problem."
+			domsg ""
+			domsg "Press return to quit..."
+			read _resp
+			unset _resp
+
+			exit 1
+		fi
+	fi
+fi
+### END Show pre-mainmsg ###
+
+### BEGIN Main loop ###
+
+while :
+do
+	# Clear the screen
+	if [ "${_CLEARSCREEN}" = "YES" ]; then
+		clear
+	fi
+
+	# Extract some info about the current menu
+	prebg="`cfgfile_get ${currentmenu}.PREBG`"
+	postbg="`cfgfile_get ${currentmenu}.POSTBG`"
+	choices="`cfgfile_get ${currentmenu}.CHOICES`"
+	ps1prompt="`cfgfile_get ${currentmenu}.PS1`"
+	choice2file="`cfgfile_get ${currentmenu}.C2FILE`"
+	readcmd="`cfgfile_get ${currentmenu}.READCMD`"
+
+	# Execute the pre-background exec, if any.
+	if [ "$prebg" ]; then
+		if availibleforexec $prebg; then
+			$prebg
+		else
+			execcmdnotavailible $prebg
+		fi
+	elif [ "$_GLOBALPREBG" ]; then
+		if availibleforexec $_GLOBALPREBG; then
+			$_GLOBALPREBG
+		else
+			execcmdnotavailible $_GLOBALPREBG
+		fi
+	fi
+
+	# Show the menu to the user
+	if [ -z "${_MINIMODE}" ]; then
+		# Extract some data not used in the minimode
+		bgfile="${_MENUBGPREFIX}`cfgfile_get ${currentmenu}.MENUBG`${_MENUBGSUFFIX}"
+		if [ -f "$bgfile" ]; then
+			cat $bgfile
+		else
+			# Look for the file in the directory specified in BGPATH.
+			if [ "${_BGPATH}" ]; then
+				if [ -f "${_BGPATH}/${bgfile}" ]; then
+					cat ${_BGPATH}/${bgfile}
+				else
+					# Didn't exist, Show errormessage if there are no post- or
+					# prebg definitions either
+					if ! [ "${prebg}${postbg}" ]; then
+						missingmenubgfile
+					fi	
+				fi
+			else
+				# File wasn't availible, and no BGPATH was specified.
+				# Show errormessage if there are no post- or
+				# prebg definitions either
+				if ! [ "${prebg}${postbg}" ]; then
+					missingmenubgfile
+				fi
+			fi
+		fi
+	else
+		# Create the output to be sent to the minimode creator
+		(
+			# Output all global choices
+			echo "BEGIN_GLOBAL_CHOICES"
+			for c in $_GLOBALCHOICES
+			do
+				choicetxt="`cfgfile_get @.${c}.TXT`"
+				echo "${c}: ${choicetxt}"
+			done 
+
+			echo "BEGIN_LOCAL_CHOICES"
+			# Due to configfiles format, the root menu needs to be handled in a
+			# special way.
+			if [ -z "${currentmenu}" ]; then
+				for c in $choices
+				do
+					choicetxt="`cfgfile_get ${c}.TXT`"
+					echo "${c}: ${choicetxt}"
+				done
+			else
+				for c in $choices
+				do
+					choicetxt="`cfgfile_get ${currentmenu}.${c}.TXT`"
+					echo "${c}: ${choicetxt}"
+				done
+			fi
+			) | ${_MINIMODEBGCREATOR}
+
+		# Unset temporary variables
+		unset c
+		unset choicetxt
+	fi
+	
+	# Execute post-background app if configured
+	if [ "$postbg" ]; then
+		if availibleforexec $postbg; then
+			$postbg
+		else
+			execcmdnotavailible $postbg
+		fi
+	elif [ "$_GLOBALPOSTBG" ]; then
+		if availibleforexec $_GLOBALPOSTBG; then
+			$_GLOBALPOSTBG
+		else
+			execcmdnotfound $_GLOBALPOSTBG
+		fi
+	fi
+
+	# Read input from user
+	if [ "${ps1prompt}" ]; then
+		# Menu specific PS1
+		printf "${ps1prompt}"
+	else
+		# Global PS1
+		printf "${_PS1}"
+	fi
+
+	# read resp
+	if [ "${readcmd}" ]; then
+		$readcmd resp
+	else
+		$_GLOBALREADCMD resp
+	fi
+
+	# Just update the screen if the user pressed only return
+	if [ -z "${resp}" ]; then
+		continue
+	fi
+
+	# If requested, copy the choice to a file.
+	if [ "${choice2file}" ]; then
+		printf "${resp}" > ${choice2file}
+	fi
+
+	# Process the users input
+	_known_choice="$resp"
+	if instring $_known_choice $choices; then
+		# Extract menuspecific data for this choice
+		if [ -z "${currentmenu}" ]; then
+			menuprefix=""
+		else
+			menuprefix="${currentmenu}."
+		fi
+
+		if _next_menu="`cfgfile_get ${menuprefix}${_known_choice}.CHOICES`"; then
+			if [ -z "$currentmenu" ]; then
+				currentmenu="${_known_choice}"
+			else
+				currentmenu="${currentmenu}.${_known_choice}"
+			fi
+		elif _int_cmd="`cfgfile_get ${menuprefix}${_known_choice}.CMD.INT`"; then
+			_cmd_arg="`cfgfile_get ${menuprefix}${_known_choice}.CMD.ARG`"
+			_cmd_opt="`cfgfile_get ${menuprefix}${_known_choice}.OPTIONS`"
+			handleinternal $_int_cmd $_cmd_arg
+
+			# Look for CMD1, CMD2 etc and execute them
+			multicmdhandler 
+		elif _exec_cmd="`cfgfile_get ${menuprefix}${_known_choice}.CMD.EXEC`"; then
+			_cmd_opt="`cfgfile_get ${menuprefix}${_known_choice}.OPTIONS`"
+			# If requested, twiddle.
+			if instring "TWIDDLE" $_cmd_opt; then
+				_pid=`twiddle`
+			fi
+
+			# Execute the command
+			if availibleforexec $_exec_cmd; then
+				if instring "CURRENTSHELL" $_cmd_opt; then
+					$_exec_cmd
+				else
+					execwithshell "$_exec_cmd"
+				fi
+			else
+				execcmdnotavailible $_exec_cmd
+			fi
+
+			# Look for CMD1, CMD2 etc and execute them
+			multicmdhandler
+
+			# If twiddle is running, kill it
+			if instring "TWIDDLE" $_cmd_opt; then
+				kill $_pid
+			fi
+
+			# Show "Press return..." message, if admin want's to.
+			if ! instring "NOKEY" $_cmd_opt; then
+				echo ""
+				printf "Press return to continue..."
+				read _resp
+				unset _resp
+			fi
+		else
+			# Error in configfile
+			cfgerrorhandler
+		fi
+
+	elif instring $_known_choice $_GLOBALCHOICES; then
+		# Extract configdata for this global choice
+		if _global_int_cmd="`cfgfile_get ${__global_choice_prefix}.${_known_choice}.CMD.INT`"; then
+			_global_cmd_arg="`cfgfile_get ${__global_choice_prefix}.${_known_choice}.CMD.ARG`"
+			handleinternal $_global_int_cmd $_global_cmd_arg
+
+			# Look for CMD1, CMD2 etc and execute them
+			multicmdhandler "${__global_choice_prefix}"
+		elif _global_exec_cmd="`cfgfile_get ${__global_choice_prefix}.${_known_choice}.CMD.EXEC`"; then
+			_global_cmd_opt="`cfgfile_get ${__global_choice_prefix}.${_known_choice}.OPTIONS`"
+			# If requested, twiddle.
+			if instring "TWIDDLE" $_global_cmd_opt; then
+				_pid=`twiddle`
+			fi
+
+			# Execute the command
+			if availibleforexec $_global_exec_cmd; then
+				if instring "CURRENTSHELL" $_global_cmd_opt; then
+					$_global_exec_cmd
+				else
+					execwithshell "$_global_exec_cmd"
+				fi
+			else
+				execcmdnotavailible $global_exec_cmd
+			fi
+
+			# Look for CMD1, CMD2 etc and execute them
+			multicmdhandler "${__global_choice_prefix}"
+
+			# If twiddle is running, kill it
+			if instring "TWIDDLE" $_global_cmd_opt; then
+				kill $_pid
+			fi
+
+			# Show "Press return..." message, if admin want's to.
+			if ! instring "NOKEY" $_global_cmd_opt; then
+				echo ""
+				printf "Press key to continue..."
+				read _resp
+				unset _resp
+			fi
+		else
+			# Error in configfile
+			cfgerrorhandler
+		fi
+
+	else
+		if ! instring ACCEPTALL `cfgfile_get ${currentmenu}.OPTIONS`; then
+			echo ""
+			echo "Unknown option: ${resp}"
+			echo ""
+			printf "Press return to continue."
+			read _resp
+			unset _resp
+		fi
+	fi
+
+done
+
+### END Main loop ###

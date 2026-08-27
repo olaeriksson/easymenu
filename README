@@ -1,0 +1,828 @@
+
+========
+EASYMENU
+========
+
+SHORT DESCRIPTION
+=================
+
+Easymenu is a script used to generate a multi-level menu system.
+
+BACKGROUND
+==========
+
+It is the year 2026. 25 years ago, I created Easymenu to solve some
+of my every day work problems. Back then, it was publicly released
+and had a little user base in the Linux and Unix community. Since
+then, most places where you could find it, like Freshmeat, has died
+and there are almost no records of Easymenu ever existing. But the
+source code has been safely tucked away in my archives since the last
+release, so I decided to re-relase it on GitHub. Mostly for the fun
+of it, but who knows, perhaps this very mature piece of shell script
+can be of use to someone in the future.
+
+Enjoy!
+
+
+INTRO 
+=====
+
+Easymenu can be used to generate anything from easy one-level menus
+to advanced multi-level menusystems. It has a set of internal
+commands, and can execute external applications and scripts, all
+to be as flexible as possible.
+
+Easymenu needs only one file to run, which makes it very easy to
+install and remove from your system. Configuration files and menus
+can be stored just about anywhere you like in the system, and can
+easily be removed or backed up.
+
+The goal of Easymenu is to provide a platform independent software
+that is easy to install and configure, and doesn't require a compiler
+or other tools.
+
+
+LEGAL STUFF 
+===========
+
+This is a free software and you can redistribute it and/or modify
+if as of your needs. Note though that all changes to this software
+must be released to the public, and preferably sent to the author
+for distribution with future releases.
+
+"EasyMenu" is distributed in the hope that is will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITTNES FOR A PARTICULAR PURPOSE. And the AUTHOR
+is in NO WAY RESPONSIBLE for any problems or misshaps caused by
+the software.
+
+
+COMMERCIAL USE 
+--------------
+
+If you find a place in a commercial environment where Easymenu will
+help make your life easier, and your product better, you are very
+welcome to use it. Although, I would appreciate an e-mail with some
+information about your company, and what you use Easymenu for.
+
+Also, I DEMAND that any changes, updates or additions to the script
+are made freely availible to the public and sent to me (the author)
+for publication together with the rest of Easymenu. This will
+provide a better product for us all.
+
+This is a freely availible solution, and it should stay that way.
+
+
+BACKGROUND
+==========
+
+This script was developed because I needed a way to let people,
+with minimal unix knowledge, use and administrate systems that was
+developed using various scripts and binaries. Easymenu gave me a
+quick and easy way to generate easy-to-use frontends for powerfull
+and advanced backends.
+
+It is not the ultimate solution to the problem, but the time to
+develope the it was minimal, and to set up a usable menusystem
+won't take very long time at all, but still it is able to provide
+very powerfull solutions.
+
+
+TESTED ON
+=========
+
+This application was developed under NetBSD (http://www.netbsd.org)
+and therefore you shouldn't have any problems running it there,
+nor should there be any problems with the other freely availible
+BSD systems (FreeBSD & OpenBSD). Also, it was developed with
+compatibility in mind and it uses as little platform depended
+mumbo-jumbo as possible. Which means it should run in most environments
+with very little, or no changes at all.
+
+It has also been successfully tested on a few Linux systems (Slackware
+and Gentoo) so there shouldn't be a problem with these either.
+
+Also, since version 0.7p1 it will run under Sun Solaris, but this
+requires that /usr/bin/ksh is used instead of /bin/sh (replace the
+first line of the script with #!/usr/bin/ksh). You can also use
+the oldstyle mode by providing the '-o' flag to easymenu, but this
+will result in a major loss of speed.
+
+When using 'bash' as shell environment to execute Easymenu in,
+instead of the standard 'sh', it seems to be working on most systems
+that are availible today. This will also get Easymenu running under
+Solaris, so to get it running, install bash on your machine, and
+replace the very first line in Easymenu (#!/bin/sh) with a '#!'
+followed by the full path to bash. (Example: #!/usr/local/bin/bash).
+This is not the best solution to the problem, but it A solution,
+and if you feel that you can't wait for me to come up with a better
+one, you are very welcome to solve the problem and send me a patch
+and I would be very happy to implement it.
+
+From version 0.7.1, Easymenu supports the -a flag, which should work
+on most systems that require the -o flag, and should perform better in
+most cases aswell.
+
+Also, please send information on successfull usage on platforms
+other than the BSD and Linux based ones.
+
+
+SPEED
+=====
+
+Easymenu is a shell script, therefore it isn't the fastest application
+in the world, but with todays CPU's, that shouldn't really be a
+problem.
+
+Also, using bash for execution environment has proven to cause
+quite big performance loss compared to, for example, sh.
+
+But if you feel that it's to slow, you are very welcome to optimize
+it and make it run faster. And if you do, please send me a patch.
+
+
+
+INSTALLATION
+============
+
+The installation is very easy, just copy the bin/easymenu file from
+the easymenu package to a directory in your path (/usr/local/bin/
+for example), and then start editing your configuration file. You
+can either name it /usr/local/etc/easymenu.conf and easymenu will
+find it by default, or place it anywhere you like, and just supply
+an argument to easymenu which tells it where to look for the
+configfile. See below for more details.
+
+
+USAGE
+=====
+
+Synopsis
+    easymenu [-oa] [-c <var>:<value>] [configfile] 
+    easymenu -v
+
+If the configfile is omitted, easymenu will look for .easymenurc
+in the users homedirectory, and if that can't be found, the system
+global file will be read (/usr/local/etc/easymenu.conf).
+
+-o
+This flag switches easymenu to oldstyle mode, which makes it
+more portable, but also alot slower, should only be used when really
+needed. This option is disabled by -a.
+
+-a
+Enables an alternative way of fetching configuration data from the
+internal database. These routines can speed up things when working with
+big configfiles on slow machined, but it can also slow things down for
+smaller sets of configurations.
+
+-p
+Switch the configfile pre-parser to debug mode. This will output the
+generated configfile to stderr and then exit. Mainly used for debuging
+new pre-parser functions.
+
+These methods might also work on some machines which normaly required
+the -o flag, and on most of those, it will perform better with -a. Give
+it a try and see which is the best choice for your installation.
+
+-c
+The -c flag is used to send configuration options to easymenu
+via the commandline. The flag can be given several times in a row,
+or several options can be sent at the same time by separating them
+with a semi-colon (;). Remember to enclose the options in quotes
+if you need to use whitespaces etc.  
+Example: 
+easymenu -c CLEARSCREEN:NO etc/easymenu.conf
+easymenu -c CLEARSCREEN:NO;PS1:Choice: etc/easymenu.conf 
+easymenu -c CLEARSCREEN:NO -c "PS1:Please choose:" etc/easymenu.conf
+
+-v
+Show version information.
+
+
+CONFIGURATION
+=============
+
+A menu consists of one configuration file, a set of 'menufiles',
+and perhaps a script or two, if needed.
+
+Also, with the new minimode in version 0.7.2, menus can be created
+without the menufiles. This can be usefull if only one configfile
+is prefered, although it doesn't allow the same flexibility and menues
+will only contain simple textlines showing the availible choices in the
+current menu.
+
+
+CONFIG FILE
+===========
+
+By default, Easymenu will look for a configurationfile named
+.easymenurc in the homedirectory of the user that executed it. If
+no file can be found, it will go for the system global configuration
+availible as /usr/local/etc/easymenu.conf.
+
+
+Filestructure
+-------------
+
+The configuration file is based on a tree structure where dot (.)
+is the base which menus expand from. The file also contains a few
+special options that arn't really part of the menu tree, these
+options change some settings that will affect the way that easymenu
+acts. (Example: ALLOWKILL and CLEARSCREEN, see below for more info
+on these).
+
+Also, lines starting with an at char (@) are global configuration
+options, these arn't part of the menu tree either, but rather
+choices that are availible in all menus.
+
+To configure the root menu, you should do something like this:
+.MENUBG:root-menu
+.CHOICES:1 2
+
+This will output the file root-menu to the screen, and wait for
+the user to answer with either '1' or '2'. If the user choose '1',
+we would like to present the user with a file called 'README', this
+would be done like this:
+
+1.CMD.EXEC:more README
+
+And if the user choose '2', a submenu called 'demo' should be
+entered:
+
+2.MENUBG:demo
+2.CHOICES:a b
+2.a.CMD.EXEC:ls
+2.b.CMD.EXEC:cat /etc/motd
+
+This will show the file 'demo' to the user, and expect either 'a'
+or 'b' back. If the user choose 'a', the files in the current
+directory will be listed using the 'ls' command. On choice 'b',
+the 'message of the day' (or 'motd') file will be shown to the
+user.
+
+In this way you create a tree containing several levels of submenus
+that the user can enter.
+
+Below is the example in whole:
+.MENUBG:root-menu
+.CHOICES:1 2
+1.CMD.EXEC:more README
+2.MENUBG:demo
+2.CHOICES:a b
+2.a.CMD.EXEC:ls
+2.b.CMD.EXEC:cat /etc/motd
+
+If you have a look at the example configuration at the end of this
+file, you will probably get a better understanding of how it works,
+and also, there is a configuration provided in the etc/ directory
+that has been used for testing which can help you some more.
+
+
+Special commands
+----------------
+Easymenu contains a pre-processor which works with the specified
+configuration file based on a set of special commands. These commands
+are availible to increase the functionality and to make the configs
+easier to read, understand and edit.
+
+Availible commands:
+
+$ORIGIN
+The idea to this command was borrowed from the bind zone configuration.
+It defines an origin, or prefix if you like, that will be added to all
+commands that comes after (below) it, until a new $ORIGIN statement is
+found. The origin to set follows the command, and to remove the origin,
+just specify $ORIGIN without an argument.
+
+Example:
+$ORIGIN 2.3
+MENUBG:adminmenu
+CHOICE:1 2 3
+1.CMD.EXEC:echo Choice 1
+2.CMD.EXEC:echo Choice 2
+$ORIGIN
+2.3.3.CMD.EXEC:echo Choice 3
+
+$VAR
+Defines environment variables (ENV) that are availible to all commands
+executed with the EXEC option. (Except when the CURRENTSHELL option is
+given for an executionc)
+
+Example:
+$VAR USERNAME administrator
+
+
+Comments
+--------
+
+Lines starting with a hash char (#) will be ignored. (Note that
+the hash char must be the very first char on the line to work as
+a comment)
+
+Note: Lines starting with #. are NOT threated as comments, this to
+allow the hash char to be a choice in the root menu. But you still
+might want to try to avoid this, since it can look quite confusing.
+
+
+Things to avoid
+---------------
+
+There are a few things that you should try to avoid to stay out of
+trouble with the configuration. For example, there are a few charters
+that has some special meanings, which you shouldn't use as ordernary
+menu choices. (Well, they can actually be used, but not in the root
+menu).
+
+Chars to avoid are: @ and #
+
+The @ char specifies that the line is a global configuration, and
+the hash char (#) tells easymenu that the line is a comment,
+therefore it will cause you problems sooner or later if you use
+them in ordernary menues.
+
+Also, you should avoid dots (.) as menu choices. There isn't really
+a technical problem with using it, but it will make your configfile
+look quite strange since it's based on dot separated fields.
+
+
+Lack's errorchecking
+--------------------
+
+Easymenu has very little errorchecking of the configfile, and there
+are very few things that it will complain about when launching it.
+Although, it will inform you about most (probably all) errors if
+you try to access a menu or execute some command and there is
+something wrong with that choices configuration.
+
+So, to make sure that your configuration works, run trough your
+menu system atleast one time before you deploy it.
+
+
+Configuration options
+---------------------
+
+Summary:  
+*) CLEARSCREEN 
+*) ALLOWKILL 
+*) BGPATH 
+*) TEMPROOT
+*) PS1 
+*) OPTIONS
+*) EXECSHELL
+*) MENUBGPREFIX
+*) MENUBGSUFFIX
+*) PREMAINMSG 
+*) POSTMAINMSG 
+*) MINIMODECREATOR
+*) @.CHOICES 
+*) @ 
+*) @.PREBG 
+*) @.POSTBG
+*) @.READCMD
+
+Details:
+
+CLEARSCREEN
+Should the screen be cleared when the menu is updated?
+Valid options: YES NO 
+Default: YES
+
+ALLOWKILL
+Should it be allowed to kill the menu using break signals etc? 
+Valid options: YES NO
+Default: NO
+
+BGPATH
+Allows the user to specifie a path which easymenu will look
+in for menufiles given with the MENUBG command. The MENUBG is
+checked as an absolute path, and if it can't be found, the BGPATH
+info is used to construct a new path which will be checked. Note
+that the absolute path takes precedence if both cases would match.
+
+TEMPROOT
+Specify a directory that Easymenu can use to store temporary files
+in while executing.
+Default: /tmp/
+
+OPTIONS
+Sets global options to be used troughout the whole execution.
+Availible options:  
+NOEXECBREAK - Do not exit if an EXEC command fails.
+CLEARONEXIT - Clear the screen after exit.
+MINIMODE - Switch Easymenu to Minimode, more information below.
+
+EXECSHELL
+Configure the shell interpreter to use when executing external
+binaries. Your entry here should performe the same as standard sh
+with the -c argument. That is, read commands from the commandline
+argument. Commands will be appended to the string that you enter
+in EXECSHELL.
+Default: /bin/sh -c
+
+MENUBGPREFIX
+Specifies a prefix to add to the filenames used when reading the menu
+text-files.
+Default is nothing.
+Example:
+The config below will read file newlook.main for it's main menu.
+MENUBGPREFIX:newlook.
+.MENUBG:main
+
+MENUBGSUFFIX
+Specifies a suffix to add to the filenames used when reading the menu
+text-files.
+Default is nothing.
+
+PS1
+The prompt that will be shown when asking for a choice from a menu.
+Default: 'Choice: '
+
+PREMAINMSG
+Referes to a textfile to show when easymenu is started
+and before the first menu is entered. Easymenu will first try to
+access the file as an absolute path, if this fails, it will look
+for the file in the specified BGPATH directory.
+
+POSGMAINMAG
+Same as the PREMAINMSG option, but this textfile is shown when
+easymenu exits.
+
+MINIMODECREATOR
+This specifies the menu creator to use if in minimode. If no minimode menu
+creator is given, Easymenu will use it's internal menu creator.
+For more information on how to build minimode creators, please see chapter
+below regarding the minimode.
+
+@.CHOICES
+A space separated list of global choices that are availible.
+Works the same way as the menucommand 'CHOICES' but for the global
+keys and should contain all global commands that are availible.
+
+@
+The at char (@) tells Easymenu that this is a global choice
+configuration, and that it will be availible in all menues.
+Note: If both a local and global configuration exists for a choice,
+the local one will be executed, and the global one will be ignored.
+Example:
+@.h.CMD.EXEC:echo Choice h shows this text anywhere!
+
+@.PREBG
+This is a global pre-bg command that will be executed before
+every menufile is shown to the user. Note that if a menu specific
+`PREBG` command is availible, then the global one will be ignored
+and not executed.
+
+@.POSTBG
+A global version of the menuspecific `POSTBG` command.
+Will be executed after the menufile is printed on all menus that
+doesn't contain a menuspecific `POSTBG` command.
+
+@.READCMD
+The READCMD option can be used to specify an alternative
+to the default 'read' command used when prompting the user for a
+choice. This can be usefull if you wish to replace the old 'press
+choice then return'-style of doing things, with a more modern style
+where no return key is needed. For example, if you are running
+easymenu under bash instead of standard sh, you might use
+'@.READCMD:read -n 1' to make all choices exactly one char long,
+and spare the user from needing to press return after each choice.
+
+The command entered as READCMD must handle commandline arguments
+in a way where it reads the very last argument and uses it as the
+name for the variable into which the users choice will be stored.
+
+
+Menu options
+------------
+
+Summary:  
+*) MENUBG 
+*) CHOICES 
+*) CMD 
+*) CMD.EXEC 
+*) CMD.INT 
+*) CMD.ARG 
+*) OPTIONS 
+*) PREBG 
+*) POSTBG 
+*) PS1 
+*) C2FILE 
+*) READCMD
+*) TXT
+
+Details:
+
+MENUBG
+The path to a textfile which will be shown to the user for
+this particular menu.
+
+CHOICES
+A whitespace separated list of the choices that will be
+accepted from the user. Choices in the global list (@.CHOICES) will
+also be added to this list. If the used answers with a choice that
+isn't present in .CHOICES or @.CHOICES, then the user will get an
+error message, and presented with the same menu again.
+Note: If option ACCEPTALL is present, then the user won't get the
+"unknown choice" message.
+Example:
+.CHOICES:1 2 3 a b c help
+
+CMD
+The CMD options doesn't really fill a function, it just contains
+a few sub-options that are quite usefull (CMD.EXEC, CMD.INT and
+CMD.ARG).
+
+CMD.EXEC
+This option is used to execute external unix commands to
+perform various tasks.
+Example:
+1.CMD.EXEC:more README
+
+CMD.INT
+Execute an internal command for the given option.  Availible commands: 
+BACK QUIT REFRESH GOTO CONFIGDEBUG CFGSET CFGREMOVE CFGRELOAD CFGLOADNEWFILE
+WAIT WAITRETURN SETMENUBGPREFIX SETMENUBGSUFFIX READ ENVSET ENVREMOVE NULL
+
+BACK - Brings the user one level higher.
+QUIT - Quit Easymenu.
+REFRESH - Refresh the screen.
+GOTO - Go to a specific menu. Destination is specified using CMD.ARG.
+CONFIGDEBUG - Show internal config data, used to debug Easymenu.
+CFGSET - Set a configuration option, same format as for the -c argument flag.
+CFGREMOVE - Remove the configuration option specified in CMD.ARG.
+CFGRELOAD - Reloads the initial configfile from disk.
+CFGLOADNEWFILE - Replace current config with the one specified in CMD.ARG.
+WAIT - Wait for CMD.ARG seconds.
+WAITRETURN - Ask the user to press return. Uses CMD.ARG as prompt.
+SETMENUBGPREFIX - Changes the prefix used for menu backgrounds to CMD.ARG.
+SETMENUBGSUFFIX - Changes the suffix used for menu backgrounds to CMD.ARG.
+READ - Prompt the user for a string and store it in variable CMD.ARG.
+ENVSET - Set ENV Variable. CMD.ARG format: <name> <value>
+ENVREMOVE - Remove ENV Variable named in CMD.ARG.
+NULL - Does nothing.
+
+CMD.ARG
+Argument for commands that require this, for example the GOTO command.
+Example:
+1.CMD.INT:GOTO
+1.CMD.ARG:2.1
+
+OPTIONS
+Options are used to control the behavior of EXEC commands
+etc.  Options for EXEC: NOKEY TWIDDLE ACCEPTALL CURRENTSHELL
+NOKEY - Don't request a  return key after command execution.
+TWIDDLE - Will spinn a little propeller while executing commands.
+ACCEPTALL - Will accept all choices, not just the ones in .CHOICES.
+CURRENTSHELL - EXEC uses current shell to execute binaries.
+
+PREBG
+This is a command which is ran before the MENUBG textfile is shown.
+
+POSTBG
+This is a command that will be executed after the MENUBG
+textfile is shown to the user.
+
+PS1
+Used to set the choice prompt for the specified menu.
+
+C2FILE
+Store the current choice in the file specified using this
+option.
+Example:
+1.2.C2FILE:/tmp/choice
+
+READCMD
+Specifies a menuspecific command to be used to read input
+from the user. Please see instructions for the global READCMD
+(@.READCMD) option above for more information.
+
+TXT
+Used with the minimode to specify the text description to show for
+each choice in a menu. Also availible for global choices.
+
+
+Multiple command execution
+--------------------------
+
+Multiple commands can be executed for one choice using numbered
+CMD options like this:
+1.1.CMD.EXEC:echo First line
+1.1.CMD2.EXEC:sleep 1
+1.1.CMD3.EXEC:echo Second line 
+1.1.CMD4.EXEC:sleep 1
+
+Note that the first command line is CMD, and the second one is
+CMD2. It is very important that you use CMD, and not CMD1 for the
+first one, otherwise easymenu will complain when you try to execute
+that choice.
+
+There isn't really a limit to the number of commands you can execute
+like this. Observe that it is very important that you don't skip
+a number, since easymenu would interpet this as the end of the
+list.
+
+Example:
+1.1.CMD.EXEC:echo First line 
+1.1.CMD2.EXEC:sleep 1
+# Note that CMD3 is skipped.
+1.1.CMD4.EXEC:echo Second line
+1.1.CMD5.EXEC:sleep 1
+
+In the example above, CMD3 is missing, and when easymenu tries to
+find it and doesn't it will presume that CMD2 was the last one in
+the list. So only CMD and CMD2 will be executed, CMD4 and CMD5
+won't ever be parsed.
+
+You can also use internal commands in these lists together with
+the CMD.ARG optiion.
+Example:
+1.1.CMD.EXEC:more README
+1.1.CMD2.INT:GOTO
+1.1.CMD2.ARG:2.1
+1.1.CMD3.EXEC:echo You have now been moved to another menu.
+
+
+ENV Variables availible
+-----------------------
+
+Whenever a script or binary is executet using the EXEC option, Easymenu
+will provide a set of ENV variables containing information about the
+current settings, choices and states.
+
+Note: If the CURRENTSHELL option is set for the execution, these variables
+will not be availible.
+
+The following variables are availible:
+*) EM_COMMAND
+*) EM_CHOICE
+*) EM_FULLCHOUCE
+*) EM_GLOGALCHOICES
+*) EM_MENUCHOICES
+*) EM_MENU
+*) EM_BGPATH
+*) EM_PS1
+*) EM_VERSION
+
+Detailed description:
+
+EM_COMMAND
+Contains the command being executed, similar to $*
+
+EM_CHOICE
+The users current choice.
+Example: a
+
+EM_FULLCHOICE
+Same as EM_CHOICE, but prefixed with the current menu aswell.
+Example: 1.1.a
+
+EM_GLOBALCHOICES
+Whitespace separated list of all the valid global choices.
+Example: q t h
+
+EM_MENUCHOICES
+Whitespace separated list of the valid choices for the current menu.
+Example: 1 2 3
+
+EM_MENU
+The current menu that the EXEC command was called from.
+
+EM_BGPATH
+Contains the path to the used background files specified in the configfile.
+
+EM_PS1
+Contains the current choiceprompt used. Will contain the local menu specific
+one if one is given inte configfile, and the global one otherwise.
+
+EM_VERSION
+The current version of Easymenu.
+
+
+The Minimode
+============
+
+The minimode was developed to be used in environments where you want to
+keep the number of needed files as low as possible. When using the minimode,
+Easymenu will not use textfiles specified with the MENUBG command, instead
+menues will be built on-the-fly, using a minimode menu creator script, based
+on information given in the configfile using the TXT command for each
+availible choice.
+
+For an example of the minimode solution, please have a look at the
+etc/easymenu.conf-minimode configuration file provided with this package.
+
+Building a menu creator
+-----------------------
+The Minimode menu creator can be anything from a binary to a shell script.
+All that is required from it is that it is able to use the standard input
+and output devices to communicate with Easymenu. When launched, Easymenu
+will send data to the creator about the menu it should create via the
+standard input. The data is in plain text, and has a field based format
+and two keywords. The input is to be parsed as it is provided, from begining
+to end, and does not need to be buffered before parsing begins.
+
+The data consists of several entries, where each line represents one entry.
+Each entry is in one of two formats, either a keyword, or a set of two
+fields separated by a colon (:).
+
+The keywords used are BEGIN_GLOBAL_CHOICES and BEGIN_LOCAL_CHOICES. These
+represents the begining of datablocks containing global and local menu
+choices. Each keyword will only appear once, and all datafields after it
+should be threated as belonging to the current block, until a new keyword
+or End-of-file (EOF) is found.
+
+The datafields have the following format:
+<choice>:<Text with description>
+
+If more than one colon is present in the entry, the first colon should be
+threated as the separator, all other colons are to be included in the
+choices description.
+
+Below is an example of how a datastream could look:
+
+--[BEGIN Example]--
+BEGIN_GLOBAL_CHOICES
+a: Global choice number one
+b: Global choice number two
+BEGIN_LOCAL_CHOICES
+1: First local choice
+2: Second local choice
+3: Third local choice
+--[END Example]--
+
+
+Example Configuration
+=====================
+
+Below is a minimal configuration just to give you an idea on how
+to build one yourselfe. There is also a little more advanced example
+provided in the etc/ directory which has been used for testing
+while developing it.
+
+To try that configuration, make sure you are located in the same
+directory as this README file, and execute the following:  bin/easymenu
+etc/easymenu.conf-sample
+
+
+--[BEGIN Example]--
+
+# Prevent the user from being able to kill the menu using Ctrl-c
+ALLOWKILL:NO
+
+# Clear the screen between menus.
+CLEARSCREEN:YES
+
+# Path to menufiles
+BGPATH:/usr/local/etc/easymenu/menus/
+
+# Global choices that will be availible anywhere.
+@.CHOICES:q b t
+
+# Global quite choice
+@.q.CMD.INT:QUIT
+
+# Global 'back' command
+@.b.CMD.INT:BACK
+
+# Global command that takes the user to the root menu.
+# An empty argument to GOTO takes the user to the root menu.
+@.t.CMD.INT:GOTO
+@.t.CMD.ARG:
+
+# The main menu
+.MENUBG:main
+.CHOICES:1 2
+# Choice one shows a file called 'README'
+1.CMD.EXEC:more README
+# Choice two is a submenu. 
+2.MENUBG:submenu
+2.CHOICES:a b c
+# Choice 'a' lists the files in the current directory
+2.a.CMD.EXEC:ls
+# Choice 'b' starts a shell prompt
+2.b.CMD.EXEC:/bin/sh
+# Choice 'c' will just sleep for ten seconds and spinn the propeller
+2.c.CMD.EXEC:sleep 10
+2.c.OPTIONS:TWIDDLE
+
+--[END Example]--
+
+
+History and future plans
+========================
+
+Please see the sourcecode for History and ToDo list.
+
+
+THANKS TO
+=========
+Thanks goes out to Subramanya Prasad, Chicago, for sending ideas and patches
+for the new minimode that was added in Easymenu 0.7.2.
+
+
+AUTHOR
+======
+
+Ola Eriksson
+https://github.com/olaeriksson

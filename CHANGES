@@ -1,0 +1,43 @@
+Changes to Easymenu
+===================
+
+This document contains information about the major changes between
+versions of Easymenu. For more detailed information, please have
+a look at the sourcecode.
+
+0.7.2
+-----
+- Added the minimode.
+- Optimized the main loop.
+- Added configuration options for dynamic menutext output.
+- Added new internal commands:
+         CFGSET
+         WAIT
+         WAITRETURN
+         CFGREMOVE
+         CFGRELOAD
+         CFGLOADNEWFILE
+         SETMENUBGPREFIX
+         SETMENUBGSUFFIX
+- Did some code cleanup.
+- Fixed some bugs.
+
+0.7.1
+-----
+- Extended set of commandline arguments.
+- More detailed errormessages.
+- Added functions for intro- and quitmessages.
+- Added new internal commands.
+- Better support for user-specific configurations.
+- Read command to use can now be configured.
+- Solved some cross-platform issues.
+- Some more configfile related errorchecking was added.
+- Added more options to control Easymenus behavior in
+  different situations.
+- Programs are now executed using their own command interpreter,
+  and are provided with menurelated data via ENV variables.
+- Added alternative routines for handling of configuration data,
+  which can speed things up with large sets of configuration.
+- Improved scripts for demonstration usage.
+
+
